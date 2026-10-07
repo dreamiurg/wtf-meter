@@ -93,7 +93,8 @@ test('/wtf skip cancels the waiting post', { options: JAR }, async ($, on) => {
   expect(sent).toEqual([])
 })
 
-const say = ($: Parameters<Parameters<typeof test>[1]>[0], text: string) =>
+type Submits = { prompt: { submit: (input: { text: string; wait: boolean; origin: { kind: 'composer' } }) => Promise<unknown> } }
+const say = ($: Submits, text: string) =>
   $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
 
 test('a mild swear fills the jar but posts nothing', { options: JAR }, async ($, on) => {
