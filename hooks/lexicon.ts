@@ -47,10 +47,10 @@ export function score(text: string): { total: number; hits: Hit[] } {
 }
 
 export const LEVELS = [
-  { name: 'Calm', min: 0, color: '#5b8db0', toast: 'Cooled off. Carry on.' },
-  { name: 'Grumbling', min: 0.6, color: '#d4a72c', toast: 'Some grumbling in here.' },
-  { name: 'Heated', min: 1.5, color: '#e8743b', toast: 'Breathe.' },
-  { name: 'Meltdown', min: 2.5, color: '#e5484d', toast: 'Maybe git stash and get a coffee.' },
+  { name: 'Calm', dot: '🔵', min: 0, color: '#5b8db0', toast: 'Cooled off. Carry on.' },
+  { name: 'Grumbling', dot: '🟡', min: 0.6, color: '#d4a72c', toast: 'Some grumbling in here.' },
+  { name: 'Heated', dot: '🟠', min: 1.5, color: '#e8743b', toast: 'Breathe.' },
+  { name: 'Meltdown', dot: '🔴', min: 2.5, color: '#e5484d', toast: 'Maybe git stash and get a coffee.' },
 ] as const
 export type Level = (typeof LEVELS)[number]
 
@@ -62,3 +62,7 @@ export function levelOf(scores: readonly number[]): { level: Level; avg: number 
   for (const l of LEVELS) if (avg >= l.min) level = l
   return { level, avg }
 }
+
+/** Color for one message's stamp, by how bad that message alone was. */
+export const stampColor = (total: number) =>
+  total >= 6 ? LEVELS[3].color : total >= 3 ? LEVELS[2].color : LEVELS[1].color

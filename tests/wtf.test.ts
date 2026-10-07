@@ -35,7 +35,7 @@ test('a sweary prompt sets status, stamps its row and draws the strip', async ($
   on('ui.render', (_$, e) => ({ type: 'Text', props: {}, children: [String((e.props as { text?: string }).text ?? 'engine')] }) as never)
 
   await $.prompt.submit({ text: 'fucking hell, бля', wait: false, origin: { kind: 'composer' } })
-  expect(statuses.at(-1)).toBe('WTF 3 · 3.0/msg ▲ Meltdown')
+  expect(statuses.at(-1)).toBe('🔴 Meltdown · 3 WTFs ▲')
   expect(toasts).toEqual(['Calm → Meltdown. Maybe git stash and get a coffee.'])
 
   for (const surface of ['terminal', 'desktop'] as const) {
@@ -43,7 +43,7 @@ test('a sweary prompt sets status, stamps its row and draws the strip', async ($
       plugin: 'wtf-meter', surface, component: 'UserMessage',
       props: { text: 'верни, бля', origin: { kind: 'composer' }, isExpanded: false } as never,
     })
-    expect(await row.find({ type: 'Text', text: /\[WTF \+3 · бля\]/ })).toBeDefined()
+    expect(await row.find({ type: 'Text', text: surface === 'desktop' ? /\+3 · бля/ : /\[WTF \+3 · бля\]/ })).toBeDefined()
     await row.unmount()
 
     const band = await $.ui.mount({
@@ -51,6 +51,10 @@ test('a sweary prompt sets status, stamps its row and draws the strip', async ($
       props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
     })
     expect(await band.find({ type: 'Text', text: 'Meltdown' })).toBeDefined()
+    await band.press({ key: 'hide' })
+    expect(await band.find({ key: 'show' })).toBeDefined()
+    await band.press({ key: 'show' })
+    expect(await band.find({ key: 'hide' })).toBeDefined()
     await band.unmount()
   }
 })

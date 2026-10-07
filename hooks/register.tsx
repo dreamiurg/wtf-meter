@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Msg } from '../types'
-import { levelOf, score } from './lexicon'
+import { levelOf, score, stampColor } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
 const isHidden = atom({ plugin: 'wtf-meter', key: 'isHidden' } as const, false)
@@ -23,8 +23,8 @@ function statusLine(list: readonly Msg[]) {
   const now = levelOf(scores)
   const before = levelOf(scores.slice(0, -1))
   const wtf = list.reduce((a, m) => a + m.hits, 0)
-  const arrow = now.avg > before.avg ? '▲' : now.avg < before.avg ? '▼' : '·'
-  return `WTF ${wtf} · ${(wtf / list.length).toFixed(1)}/msg ${arrow} ${now.level.name}`
+  const arrow = now.avg > before.avg ? ' ▲' : now.avg < before.avg ? ' ▼' : ''
+  return `${now.level.dot} ${now.level.name} · ${wtf} WTF${wtf === 1 ? '' : 's'}${arrow}`
 }
 
 const showStatus = async ($: EngineInterface) => {
@@ -58,30 +58,50 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e)) // a counter must never block a prompt
 
-  // Variant C: stamp each of your messages that scored.
+  // Stamp each of your messages that scored: a colored pill under the bubble
+  // on the desktop, a text line where only text draws.
   on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
     if (!isTyped(e.props.origin)) return next(e)
     const s = score(e.props.text)
     if (!s.total) return next(e)
+    const label = `+${s.total} · ${worstOf(s.hits)}`
 
-    const stamp = `[WTF +${s.total} · ${worstOf(s.hits)}]`
-    return next({ ...e, props: { ...e.props, text: `${e.props.text}\n${stamp}` } })
+    if (e.surface !== 'desktop') {
+      return next({ ...e, props: { ...e.props, text: `${e.props.text}\n[WTF ${label}]` } })
+    }
+    const { Box, Markdown, Text } = $.ui.resolve(e)
+    const color = stampColor(s.total)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Markdown text={e.props.text} />
+        <Box flexDirection="row">
+          <Box borderStyle="round" borderColor={color} paddingX={1}>
+            <Text color={color} bold>● {label}</Text>
+          </Box>
+        </Box>
+      </Box>
+    )
   })
 
-  // Variant B: heat strip above the prompt.
+  // Heat strip above the prompt: one bar per message.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const list = await read($, msgs)
-    if (e.props.hasSurvey || !list.length || (await read($, isHidden))) return next(e)
+    if (e.props.hasSurvey || !list.length) return next(e)
 
     const scores = list.map(m => m.score)
     const { level, avg } = levelOf(scores)
+    const t = $.ui.resolve(e)
+    const { Box, Text, Button } = t
+
+    // Hidden collapses to one chip that opens the strip again.
+    if (await read($, isHidden)) {
+      return <Button key="show" plain label={`${level.dot} ${level.name} ▸`} onPress={() => update($, isHidden, () => false)} />
+    }
     const before = levelOf(scores.slice(0, -1)).avg
     const trend = avg > before ? 'rising' : avg < before ? 'cooling' : 'steady'
     // Color each bar by the level the session was at when that message landed.
     const bars = scores.map((sc, i) => ({ sc, color: sc ? levelOf(scores.slice(0, i + 1)).level.color : null }))
 
-    const t = $.ui.resolve(e)
-    const { Box, Text, Button } = t
     const hide = <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
     const label = <Text bold color={level.color}>{level.name}</Text>
     const tail = <Text dimColor> avg {avg.toFixed(2)} · {trend} </Text>
