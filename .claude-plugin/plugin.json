@@ -1,7 +1,7 @@
 {
   "name": "wtf-meter",
-  "version": "0.1.0",
-  "description": "Counts the swearing in your prompts (English, Russian, Ukrainian) and shows how heated the session is getting",
+  "version": "0.2.0",
+  "description": "Counts the swearing in your prompts (English, German, Polish, Russian, Ukrainian) and shows how heated the session is getting",
   "author": { "name": "dreamiurg" },
   "homepage": "https://github.com/dreamiurg/wtf-meter",
   "license": "MIT",

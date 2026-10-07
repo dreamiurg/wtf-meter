@@ -2,16 +2,20 @@ import { expect, test } from 'claude-code/testing'
 
 import { levelOf, score } from '../hooks/lexicon'
 
-test('scores swears in all three languages', async () => {
+test('scores swears in EN, RU, UK, DE and PL', async () => {
   expect(score('wtf, why did you delete it').total).toBe(2)
   expect(score('верни как было, бля').total).toBe(3)
   expect(score('що за хрінь').total).toBe(1)
   expect(score('ну ёбаный стыд').total).toBe(3)
   expect(score('f*** this, п***ц').hits.length).toBe(2)
+  expect(score('kurwa mać').total).toBe(3)
+  expect(score('so eine Scheiße, verdammt').total).toBe(5)
+  expect(score('ja pierdolę, kurde').total).toBe(4)
+  expect(score('verfickte Pipeline').total).toBe(3)
 })
 
 test('ignores the classic false positives', async () => {
-  const clean = 'корабля рубля употреблять блины чертёж Херсон hello shell class психует похудел небо хлеба сукно'
+  const clean = 'корабля рубля употреблять блины чертёж Херсон hello shell class психует похудел небо хлеба сукно mister Mistral misty Fickle'
   expect(score(clean).hits.map(h => h.word)).toEqual([])
 })
 

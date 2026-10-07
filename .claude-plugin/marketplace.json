@@ -10,7 +10,7 @@
     {
       "name": "wtf-meter",
       "source": "./",
-      "description": "Counts the swearing in your prompts (English, Russian, Ukrainian) and shows how heated the session is getting"
+      "description": "Counts the swearing in your prompts (English, German, Polish, Russian, Ukrainian) and shows how heated the session is getting"
     }
   ]
 }

@@ -1,4 +1,4 @@
-// Weighted swear patterns for EN, RU and UK. JS \b does not see Cyrillic,
+// Weighted swear patterns for EN, RU, UK, DE and PL. JS \b does not see Cyrillic,
 // so each pattern needs a non-letter before it (L) and, where a stem could
 // run on into an innocent word, a non-letter after it (E).
 const L = '(?<![\\p{L}\\p{N}*])'
@@ -18,6 +18,12 @@ const LEX: readonly [number, string][] = [
   [3, L + 'бля(?:д\\p{L}*|ть|ха)?' + E],
   [3, L + '(?:за|у|вы|на|под|до|от|про|раз|съ|при|по|из)?[еёї]б(?:а|у|ну|ё|е[тш]|л|ис)\\p{L}*'],
   [2, L + '(?:сук(?:а|и|у|ой|ин\\p{L}*)|муд(?:ак|ач|ил)\\p{L}*|(?:на|по|ни)?хер(?!сон)\\p{L}*|г[оі]вн\\p{L}*|курв\\p{L}*)' + E],
+  // DE
+  [3, L + '(?:(?:ver|ge|abge)?fick(?:en|t|te|er|st|e)?|schei(?:ß|ss|s)\\p{L}*|arschloch\\p{L}*)' + E],
+  [2, L + '(?:verdammt\\p{L}*|mist(?:stück)?|kacke)' + E],
+  // PL
+  [3, L + '(?:kurw\\p{L}*|\\p{L}*pierdol\\p{L}*|(?:wy|za|od|roz|s)?jeb(?:a|i|ie|n|ło|ać)\\p{L}*|chuj\\p{L}*)'],
+  [1, L + '(?:kurde|kurczę|cholera(?:\\s+jasna)?)' + E],
   [1, L + '(?:блин|хр[еі]н\\p{L}*|ч[её]рт(?:и|ов|овски)?|дідьк\\p{L}*|трясця|холера|срак\\p{L}*|лайн[оа])' + E],
 ]
 const RX = LEX.map(([w, re]) => ({ w, rx: new RegExp(re, 'giu') }))

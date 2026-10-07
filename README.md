@@ -1,12 +1,12 @@
 # WTF meter
 
-![GOOD SESSION vs BAD SESSION: two doors labeled CLAUDE CODE, the bad one surrounded by WTF, БЛЯ, ЩО ЗА ХРІНЬ, ПИЗДЕЦ](docs/hero.jpg)
+![GOOD SESSION vs BAD SESSION: two doors labeled CLAUDE CODE, the bad one surrounded by WTF, KURWA!, SCHEISSE, DUDE WTF, WHY DID YOU DELETE THE TESTS](docs/hero.jpg)
 
 In 2008 Thom Holwerda drew the definitive code quality metric for [OSNews](https://www.osnews.com/story/19557/Fools): two doors marked CODE REVIEW, and the only number that matters is how many WTFs per minute come out from behind them. Robert C. Martin opened *Clean Code* with it.
 
-The code review is a chat with Claude now, and the WTFs are typed. So this is a Claude Code mod that counts them: in English, Russian and Ukrainian, live, per message.
+The code review is a chat with Claude now, and the WTFs are typed. So this is a Claude Code mod that counts them, live, per message: in English, German, Polish, Russian and Ukrainian.
 
-<img src="docs/meter.jpg" alt="A vintage panel meter labeled WTF / MSG with zones CALM, GRUMBLING, HEATED, MELTDOWN, needle slammed into MELTDOWN" width="420" align="right">
+<img src="docs/meter.jpg" alt="A vintage panel meter labeled WTF / MSG, needle slammed into MELTDOWN, with kurwa, wtf and Scheiße floating above it" width="420" align="right">
 
 **What you get**
 
@@ -22,7 +22,7 @@ Works in the Claude Code terminal and the Code tab of the Claude desktop app. No
 
 ## The four stages of a Claude Code session
 
-![CALM, GRUMBLING (блин), HEATED (WTF?!), MELTDOWN (ПИЗДЕЦ)](docs/levels.jpg)
+![CALM, GRUMBLING (dammit), HEATED (WTF?!), MELTDOWN (KURWA!)](docs/levels.jpg)
 
 The level is the average score of your last 4 messages, so one truly bad message can skip a stage.
 
@@ -58,9 +58,9 @@ Start a new session after installing.
 
 ## Scoring
 
-Every word in [`hooks/lexicon.ts`](hooks/lexicon.ts) has a weight: 1 mild (`damn`, `блин`, `дідько`), 2 medium (`wtf`, `сука`, `курва`), 3 strong (the f-word and the mat roots). Censored spellings that dictation tools produce (`f***`, `п***ц`) count too.
+Every word in [`hooks/lexicon.ts`](hooks/lexicon.ts) has a weight: 1 mild (`damn`, `kurde`, `блин`), 2 medium (`wtf`, `verdammt`, `сука`), 3 strong (the f-word, `kurwa`, `Scheiße`, the Russian and Ukrainian mat roots). Censored spellings that dictation tools produce (`f***`, `п***ц`) count too.
 
-Russian and Ukrainian share most of the mat roots, so they share patterns. Each pattern needs a non-letter before it, because JavaScript's `\b` does not see Cyrillic. That keeps `корабля`, `употреблять`, `Херсон`, `блины`, `чертёж`, `hello` and `class` clean. Known miss: `Ебург`.
+Russian and Ukrainian share most of the mat roots, so they share patterns. Each pattern needs a non-letter before it, because JavaScript's `\b` does not see Cyrillic. That keeps `hello`, `class`, `fickle`, `mister`, `корабля`, `Херсон` and `блины` clean. Known miss: `Ебург`.
 
 Only what you type counts. Background task notifications, scheduled prompts and messages from other agents are skipped.
 
