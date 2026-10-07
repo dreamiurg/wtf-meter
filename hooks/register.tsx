@@ -49,7 +49,10 @@ export const register: Register = on => {
     const scores = list.map(m => m.score)
     const was = levelOf(scores.slice(0, -1)).level
     const now = levelOf(scores).level
-    if (now !== was) $.ui.toast(`${was.name} → ${now.name}. ${now.toast}`)
+    if (now !== was) {
+      $.ui.toast(`${was.name} → ${now.name}. ${now.toast}`)
+      await update($, isHidden, () => false) // a level change brings a hidden strip back
+    }
     await showStatus($)
 
     return next(e)
