@@ -30,8 +30,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PR=$(gh pr list --repo "$GITHUB_REPOSITORY" --label "autorelease: pending" --state open --json number -q '.[0].number')
-          if [ -n "$PR" ]; then gh pr merge "$PR" --squash --repo "$GITHUB_REPOSITORY"; else echo "No release PR to merge."; fi
+          # Only Release Please's own PR: its branch, opened by the Actions bot, from this repo.
+          PRS=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --head release-please--branches--main--components--wtf-meter \
+            --label "autorelease: pending" --author "app/github-actions" \
+            --json number,headRepositoryOwner \
+            -q "[.[] | select(.headRepositoryOwner.login == \"$GITHUB_REPOSITORY_OWNER\") | .number] | @sh")
+          set -- $PRS
+          if [ $# -eq 0 ]; then echo "No release PR to merge."; exit 0; fi
+          if [ $# -gt 1 ]; then echo "More than one release PR ($PRS); not merging."; exit 1; fi
+          gh pr merge "$1" --squash --repo "$GITHUB_REPOSITORY"
 
       # A merge made with GITHUB_TOKEN starts no new workflow run, so tag the release here.
       # With nothing merged this is a no-op.
