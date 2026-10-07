@@ -1,7 +1,7 @@
 // Swear jar: coins per swear, and the one line it may post to Slack.
 //
-// Privacy by construction: a post is built only from the configured name, an
-// amount and one topic from TOPICS. The model only picks a topic; any reply
+// Privacy by construction: a post is built only from an amount and one topic
+// from TOPICS. The model only picks a topic; any reply
 // that is not exactly one of them becomes "something". Nothing the person
 // typed can reach Slack, whatever the model answers.
 
@@ -37,12 +37,15 @@ export function cleanTopic(reply: string | undefined): Topic {
 
 const VERBS = ['fighting', 'wrestling with', 'having words with', 'losing it at', 'yelling at']
 
-export function postText(name: string, cents: number, topic: Topic, totalCents: number, pick = Math.random()): string {
-  const who = name.trim() || 'Someone'
+/** The post, in the first person: the Slack connector posts as you. */
+export function postText(cents: number, topic: Topic, totalCents: number, pick = Math.random()): string {
   const verb = VERBS[Math.floor(pick * VERBS.length) % VERBS.length]
-  let text = `🫙 ${who} put ${money(cents)} in the swear jar, ${verb} ${topic}.`
+  let text = `🫙 +${money(cents)} in the swear jar, ${verb} ${topic}.`
   if (Math.floor(totalCents / JAR_CENTS) > Math.floor((totalCents - cents) / JAR_CENTS)) {
-    text += ` 🍺 That fills ${who}'s jar: ${money(totalCents)} in all. Beer run!`
+    text += ` 🍺 That fills my jar: ${money(totalCents)} in all. Beer run!`
   }
   return text
 }
+
+/** A Slack channel id (C…, G…) in a tool result's text, if any. */
+export const channelIdIn = (text: string) => /\b[CG][A-Z0-9]{8,}\b/.exec(text)?.[0]

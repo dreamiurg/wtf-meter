@@ -45,34 +45,26 @@ Inspired by Bud Light's "Swear Jar" ad: the office jar that paid for beer, until
 
 ### Post to a team Slack channel
 
-Point the jar at a Slack channel and your team sees who is paying in:
+If Slack is connected in Claude (the Slack connector or the Slack plugin), the jar can post to a team channel as you:
 
-> 🫙 Dima put $2.50 in the swear jar, fighting a release.
-> 🫙 Serge put $1.75 in the swear jar, losing it at CI. 🍺 That fills Serge's jar: $20.25 in all. Beer run!
+> 🫙 +$2.50 in the swear jar, fighting a release.
+> 🫙 +$1.75 in the swear jar, losing it at CI. 🍺 That fills my jar: $20.25 in all. Beer run!
 
-**Your words never reach Slack.** A post is built only from your name, the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
+**Your words never reach Slack.** A post is built only from the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
 
 Posts wait 2 minutes, so a burst of swearing becomes one post. `/wtf skip` or the strip's **Skip Slack post** button cancels the waiting post; the coins stay in your jar.
 
-Setup:
-
-1. Create the channel, e.g. `#swear-jar`.
-2. Make an incoming webhook for it: [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From scratch → Incoming Webhooks → on → Add New Webhook → pick the channel. Copy the `https://hooks.slack.com/services/...` URL. Share it with your team: one webhook serves everyone.
-3. Set the plugin options, from `/config` in the terminal, or in `~/.claude/settings.json`:
+Setup: create the channel, then set two plugin options (`/config` in the terminal, or `~/.claude/settings.json`):
 
 ```json
 "pluginConfigs": {
   "wtf-meter@wtf-meter": {
-    "options": {
-      "mode": "jar",
-      "name": "Dima",
-      "slackWebhookUrl": "https://hooks.slack.com/services/..."
-    }
+    "options": { "mode": "jar", "slackChannel": "swear-jar" }
   }
 }
 ```
 
-The webhook URL sits in your settings file in plain text. Anyone holding it can post to that channel, so treat it like a password.
+`slackChannel` takes a channel name or its ID (`C…`, from the channel's "Copy link"). Use the ID if the name matches more than one channel. No Slack connected: the jar stays local and a toast says so.
 
 ## Install
 
@@ -102,7 +94,7 @@ Only what you type counts. Background task notifications, scheduled prompts and 
 
 ## Privacy
 
-Meter scores live in the session's own state and go away with it; the jar total is kept in the plugin's local store. The stamps change only how your message is drawn: Claude still reads exactly what you typed. Slack posting is off until you set a webhook, and a post never contains your words (see [swear jar mode](#swear-jar-mode)). Picking the topic is one small model call through your own Claude Code session.
+Meter scores live in the session's own state and go away with it; the jar total is kept in the plugin's local store. The stamps change only how your message is drawn: Claude still reads exactly what you typed. Slack posting is off until you set a channel, and a post never contains your words (see [swear jar mode](#swear-jar-mode)). Picking the topic is one small model call through your own Claude Code session.
 
 ## Develop
 

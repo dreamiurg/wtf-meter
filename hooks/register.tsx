@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Msg } from '../types'
-import { cleanTopic, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
+import { channelIdIn, cleanTopic, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
 import { levelOf, score, stampColor } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
@@ -37,7 +37,7 @@ function meterStatus(list: readonly Msg[]) {
 const jarStatus = (cents: number) => `🫙 ${money(cents)} · ${money(JAR_CENTS - (cents % JAR_CENTS))} to a beer run`
 
 // Set from the plugin's options when the module registers; a reload resets them.
-const cfg = { isJar: false, name: '', webhook: '' }
+const cfg = { isJar: false, channel: '' }
 let timer: { cancel: () => void } | undefined
 
 async function showStatus($: EngineInterface) {
@@ -46,22 +46,50 @@ async function showStatus($: EngineInterface) {
   $.ui.status(list.length ? meterStatus(list) : undefined)
 }
 
+const textOf = (r: { content: { type: string; text?: string }[] }) => r.content.map(c => c.text ?? '').join('\n')
+
+// Posts through whatever Slack connector the session has: the first MCP tool
+// named slack_send_message. Its argument names aren't documented, so the two
+// common shapes are tried; a rejected shape posts nothing.
+async function sendToSlack($: EngineInterface, text: string): Promise<string | null> {
+  const tools = await $.tool.list()
+  const send = tools.find(t => t.mcp && /__slack_send_message$/.test(t.name))
+  if (!send) return 'no Slack connector in this session. Connect Slack in Claude, or clear the channel setting.'
+  const server = send.name.slice('mcp__'.length, -'__slack_send_message'.length)
+
+  let channel = /^[CG][A-Z0-9]{8,}$/.test(cfg.channel) ? cfg.channel : String((await $.store.get(`channel:${cfg.channel}`)) ?? '')
+  if (!channel) {
+    const found = await $.mcp
+      .call(server, 'slack_search_channels', { query: cfg.channel.replace(/^#/, '') })
+      .catch(() => undefined)
+    channel = (found && !found.isError && channelIdIn(textOf(found))) || ''
+    if (!channel) return `couldn't find channel ${cfg.channel}. Put its ID (C…) in the channel setting.`
+    await $.store.set(`channel:${cfg.channel}`, channel)
+  }
+
+  let last = ''
+  for (const args of [{ channel_id: channel, message: text }, { channel_id: channel, text }]) {
+    const r = await $.mcp.call(server, 'slack_send_message', args).catch((err: unknown) => ({ isError: true, content: [{ type: 'text', text: String(err) }] }))
+    if (!r.isError) return null
+    last = textOf(r)
+  }
+  return last.slice(0, 160) || 'Slack refused the message.'
+}
+
 // Posts what the batch put in, once the delay is up, unless skipped.
 async function flush($: EngineInterface) {
   timer = undefined
   const batch = await read($, pending)
   await update($, pending, () => null)
-  if (!batch || !cfg.webhook) return
+  if (!batch || !cfg.channel) return
 
   const r = await $.model
     .complete({ model: 'haiku', prompt: topicPrompt(batch.texts), maxTokens: 12, timeoutMs: 20000 })
     .catch(() => undefined)
   const topic = cleanTopic(r?.isAnswered ? r.text : undefined) // no answer: "something", still posts
-  const text = postText(cfg.name, batch.cents, topic, await read($, jarCents))
-  const res = await $.http
-    .fetch(cfg.webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
-    .catch(() => undefined)
-  $.ui.toast(res?.ok ? `Posted to Slack: ${text}` : `Swear jar: Slack post failed (${res?.status ?? 'network'}). Check the webhook URL.`)
+  const text = postText(batch.cents, topic, await read($, jarCents))
+  const failed = await sendToSlack($, text)
+  $.ui.toast(failed ? `Swear jar: Slack post failed: ${failed}` : `Posted to ${cfg.channel}: ${text}`)
 }
 
 async function skip($: EngineInterface) {
@@ -74,9 +102,9 @@ async function skip($: EngineInterface) {
 
 export const register: Register = (on, options) => {
   cfg.isJar = options.mode === 'jar'
-  cfg.name = String(options.name ?? '')
-  cfg.webhook = String(options.slackWebhookUrl ?? '').trim()
-  const { isJar, webhook } = cfg
+  cfg.channel = String(options.slackChannel ?? '').trim()
+  const { isJar } = cfg
+  const posts = isJar && cfg.channel !== ''
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'wtf', description: 'WTF meter: show the strip again and print the tally', argumentHint: '[skip]' })
@@ -84,7 +112,7 @@ export const register: Register = (on, options) => {
       const kept = Number((await $.store.get(JAR_KEY)) ?? 0)
       await update($, jarCents, () => kept)
       // A reload drops timers; a batch still waiting gets a fresh one.
-      if (webhook && (await read($, pending))) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
+      if (posts && (await read($, pending))) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
     }
     await showStatus($)
     return next(e)
@@ -99,14 +127,14 @@ export const register: Register = (on, options) => {
         const cents = s.total * CENTS_PER_POINT
         const total = await update($, jarCents, c => c + cents)
         await $.store.set(JAR_KEY, total)
-        if (webhook) {
+        if (posts) {
           await update($, pending, p => ({ cents: (p?.cents ?? 0) + cents, texts: [...(p?.texts ?? []), e.text] }))
           if (!timer) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
         }
         const full = Math.floor(total / JAR_CENTS) > Math.floor((total - cents) / JAR_CENTS)
         $.ui.toast(
           `🪙 +${money(cents)} in the jar (${money(total)}).${full ? ' 🍺 Jar full: beer run!' : ''}` +
-            (webhook ? ' Posting to Slack in 2 min; /wtf skip cancels.' : ''),
+            (posts ? ` Posting to ${cfg.channel} in 2 min; /wtf skip cancels.` : ''),
         )
       }
       await showStatus($)
@@ -265,7 +293,7 @@ export const register: Register = (on, options) => {
       return { text: had ? `Swear jar: skipped the Slack post for ${money(had.cents)}. The coins stay in your jar.` : 'Swear jar: nothing waiting to post.' }
     }
     await update($, isHidden, () => false)
-    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${webhook ? '' : '. Slack posting is off: no webhook URL set.'}` }
+    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${posts ? `. Posting to ${cfg.channel}.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')
