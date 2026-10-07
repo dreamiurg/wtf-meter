@@ -51,6 +51,8 @@ test('a sweary prompt sets status, stamps its row and draws the strip', async ($
       props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
     })
     expect(await band.find({ type: 'Text', text: 'Meltdown' })).toBeDefined()
+    // the terminal draws block bars; the desktop draws them as one Svg
+    expect(await band.find(surface === 'terminal' ? { type: 'Text', text: /[▁▂▃▄▅▆▇█]/ } : { type: 'Svg' })).toBeDefined()
     await band.press({ key: 'hide' })
     expect(await band.find({ key: 'show' })).toBeDefined()
     await band.press({ key: 'show' })

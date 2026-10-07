@@ -200,7 +200,7 @@ export const register: Register = (on, options) => {
         ? <Button key="skip" label={`Skip Slack post (${money(waiting.cents)})`} onPress={() => void skip($)} />
         : null
 
-      if (!('Svg' in t)) {
+      if (e.surface === 'terminal' || !('Svg' in t)) {
         const cells = 12
         const full = Math.round(fill * cells)
         return (
@@ -245,7 +245,7 @@ export const register: Register = (on, options) => {
     const label = <Text bold color={level.color}>{level.name}</Text>
     const tail = <Text dimColor> avg {avg.toFixed(2)} · {trend} </Text>
 
-    if (!('Svg' in t)) {
+    if (e.surface === 'terminal' || !('Svg' in t)) {
       const room = Math.max(4, (e.props.bodyColumns ?? 80) - 40)
       const BLOCKS = '▁▂▃▄▅▆▇█'
       return (
