@@ -12,6 +12,9 @@ test('a Slack post can only say a topic from the list', async () => {
   // anything else, including the model echoing the user's words, becomes "something"
   expect(cleanTopic('the payments-service deploy for ACME')).toBe('something')
   expect(cleanTopic(undefined)).toBe('something')
+  expect(cleanTopic('a flaky test and CI')).toBe('a flaky test and CI')
+  expect(cleanTopic('CI and the payments service')).toBe('CI')
+  expect(cleanTopic('a deploy, a deploy, a bug, CI')).toBe('a deploy and a bug')
   for (const t of TOPICS) expect(/[0-9/@`_]/.test(t)).toBe(false)
 })
 
@@ -36,6 +39,7 @@ function world(on: On, opts: { slack: boolean }) {
   const sent: Record<string, unknown>[] = []
   const toasts: string[] = []
   on('prompt.submit', (_$, e) => ({ text: e.text }))
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['engine'] }) as never)
   on('ui.status', () => ({ value: undefined }) as never)
   on('ui.toast', (_$, e) => { toasts.push(e.text); return { value: undefined } as never })
   on('model.complete', () => ({ value: { isAnswered: true, text: 'a deploy', usage: {} } }) as never)
@@ -87,4 +91,57 @@ test('/wtf skip cancels the waiting post', { options: JAR }, async ($, on) => {
   expect(JSON.stringify(r)).toContain('skipped the Slack post for $0.75')
   await clock.advance(5 * 60 * 1000)
   expect(sent).toEqual([])
+})
+
+const say = ($: Parameters<Parameters<typeof test>[1]>[0], text: string) =>
+  $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
+
+test('a mild swear fills the jar but posts nothing', { options: JAR }, async ($, on) => {
+  const { clock, sent, toasts } = world(on, { slack: true })
+  await say($, 'damn')
+  await clock.advance(5 * 60 * 1000)
+  expect(toasts[0]).toContain('+$0.25 in the jar')
+  expect(sent).toEqual([])
+})
+
+test('the posted line is exactly the previewed one, once per blow-up', { options: JAR }, async ($, on) => {
+  const { clock, sent, toasts } = world(on, { slack: true })
+  await say($, 'kurwa, CI again')
+  await clock.advance(0)
+  const queued = toasts.find(t => t.startsWith('Queued for #swear-jar: '))!
+  expect(queued).toBeDefined()
+  await clock.advance(2 * 60 * 1000)
+  expect(sent.length).toBe(1)
+  expect(queued).toContain(String(sent[0]!.text))
+
+  // still heated: the same blow-up does not post again
+  await say($, 'kurwa')
+  await clock.advance(5 * 60 * 1000)
+  expect(sent.length).toBe(1)
+
+  // calm down, then blow up again: a second post
+  for (const t of ['ok', 'fine', 'thanks', 'next']) await say($, t)
+  await say($, 'fucking hell, kurwa')
+  await clock.advance(2 * 60 * 1000)
+  expect(sent.length).toBe(2)
+})
+
+test('the strip shows a queued chip that opens the draft with Post now', { options: JAR }, async ($, on) => {
+  const { clock, sent } = world(on, { slack: true })
+  await say($, 'kurwa')
+  await clock.advance(0)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const band = await $.ui.mount({
+      plugin: 'wtf-meter', surface, component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
+    })
+    expect(await band.find({ key: 'preview' })).toBeDefined()
+    expect(await band.find({ key: 'post-now' })).toBeUndefined()
+    await band.press({ key: 'preview' })
+    expect(await band.find({ type: 'Text', text: /in the swear jar, [a-z ]+ a deploy\./ })).toBeDefined()
+    if (surface === 'desktop') await band.press({ key: 'post-now' })
+    else await band.press({ key: 'preview' })
+    await band.unmount()
+  }
+  expect(sent.length).toBe(1)
 })

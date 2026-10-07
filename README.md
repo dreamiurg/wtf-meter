@@ -71,7 +71,9 @@ If Slack is connected in Claude (the Slack connector or the Slack plugin), the j
 
 **Your words never reach Slack.** A post is built only from the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
 
-Posts wait 2 minutes, so a burst of swearing becomes one post. `/wtf skip` or the strip's **Skip Slack post** button cancels the waiting post; the coins stay in your jar.
+Not every swear posts. Coins drop on each one, but a post is queued only when the session gets **Heated** (roughly two strong swears in your last four messages), and it covers the whole blow-up since you were last calm: the total and up to two topics. After that, nothing new posts until you've calmed down and blown up again.
+
+A queued post shows as a small `↗ queued · 2 min` chip in the jar strip. Press it to see the exact line that will post, with **Post now** and **Skip**. `/wtf skip` also cancels. Skipped coins stay in your jar.
 
 Setup: create the channel, then set two plugin options (`/config` in the terminal, or `~/.claude/settings.json`):
 

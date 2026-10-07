@@ -13,14 +13,13 @@ export const TOPICS = [
   'a bug', 'a database', 'a migration', 'dependencies', 'the type checker', 'performance',
   'a config file', 'an API', 'the AI itself', 'a code review', 'infrastructure', 'docs',
 ] as const
-export type Topic = (typeof TOPICS)[number] | 'something'
 
 export const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 export function topicPrompt(texts: readonly string[]): string {
   return [
-    'A developer swore at their AI coding assistant. Pick the ONE topic below that best names what they are frustrated with.',
-    'Answer with the topic exactly as written and nothing else. If none fits, answer: something',
+    'A developer swore at their AI coding assistant. Pick the topic below that best names what they are frustrated with, or two if both clearly apply.',
+    "Answer with the topic exactly as written, or two joined by ' and ', and nothing else. If none fits, answer: something",
     '',
     'Topics:',
     ...TOPICS.map(t => `- ${t}`),
@@ -30,15 +29,21 @@ export function topicPrompt(texts: readonly string[]): string {
   ].join('\n')
 }
 
-export function cleanTopic(reply: string | undefined): Topic {
-  const t = (reply ?? '').trim().replace(/^[-*"'\s]+|["'.\s]+$/g, '').toLowerCase()
-  return TOPICS.find(x => x.toLowerCase() === t) ?? 'something'
+/** One or two topics, each exactly from TOPICS; anything else becomes "something". */
+export function cleanTopic(reply: string | undefined): string {
+  const picked: string[] = []
+  for (const part of (reply ?? '').split(/\s+and\s+|[,;\n]/)) {
+    const t = part.trim().replace(/^[-*"'\s]+|["'.\s]+$/g, '').toLowerCase()
+    const hit = TOPICS.find(x => x.toLowerCase() === t)
+    if (hit && !picked.includes(hit)) picked.push(hit)
+  }
+  return picked.slice(0, 2).join(' and ') || 'something'
 }
 
 const VERBS = ['fighting', 'wrestling with', 'having words with', 'losing it at', 'yelling at']
 
 /** The post, in the first person: the Slack connector posts as you. */
-export function postText(cents: number, topic: Topic, totalCents: number, pick = Math.random()): string {
+export function postText(cents: number, topic: string, totalCents: number, pick = Math.random()): string {
   const verb = VERBS[Math.floor(pick * VERBS.length) % VERBS.length]
   let text = `🫙 +${money(cents)} in the swear jar, ${verb} ${topic}.`
   if (Math.floor(totalCents / JAR_CENTS) > Math.floor((totalCents - cents) / JAR_CENTS)) {

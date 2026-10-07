@@ -1,14 +1,17 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Msg } from '../types'
-import { channelIdIn, channelLabel, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
-import { levelOf, score, stampColor } from './lexicon'
+import type { Msg, Pending } from '../types'
+import { channelIdIn, channelLabel, channelLink, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
+import { LEVELS, levelOf, score, stampColor } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
 const isHidden = atom({ plugin: 'wtf-meter', key: 'isHidden' } as const, false)
 const jarCents = atom({ plugin: 'wtf-meter', key: 'jarCents' } as const, 0)
 const pending = atom({ plugin: 'wtf-meter', key: 'pending' } as const, null)
+const cooling = atom({ plugin: 'wtf-meter', key: 'cooling' } as const, false)
+const isPreviewOpen = atom({ plugin: 'wtf-meter', key: 'isPreviewOpen' } as const, false)
+const tick = atom({ plugin: 'wtf-meter', key: 'tick' } as const, 0)
 
 const JAR_KEY = 'jarCents' // $.store: the jar outlives the session, like a real one
 const POST_DELAY_MS = 2 * 60 * 1000
@@ -39,6 +42,7 @@ const jarStatus = (cents: number) => `🫙 ${money(cents)} · ${money(JAR_CENTS 
 // Set from the plugin's options when the module registers; a reload resets them.
 const cfg = { isJar: false, channel: '', onlyFor: '', name: '', id: '' }
 let timer: { cancel: () => void } | undefined
+let ticker: { cancel: () => void } | undefined // redraws the countdown while a post waits
 
 async function showStatus($: EngineInterface) {
   if (cfg.isJar) return $.ui.status(jarStatus(await read($, jarCents)))
@@ -76,22 +80,6 @@ async function sendToSlack($: EngineInterface, text: string): Promise<string | n
   return last.slice(0, 160) || 'Slack refused the message.'
 }
 
-// Posts what the batch put in, once the delay is up, unless skipped.
-async function flush($: EngineInterface) {
-  timer = undefined
-  const batch = await read($, pending)
-  await update($, pending, () => null)
-  if (!batch || !(await canPost($))) return
-
-  const r = await $.model
-    .complete({ model: 'haiku', prompt: topicPrompt(batch.texts), maxTokens: 12, timeoutMs: 20000 })
-    .catch(() => undefined)
-  const topic = cleanTopic(r?.isAnswered ? r.text : undefined) // no answer: "something", still posts
-  const text = postText(batch.cents, topic, await read($, jarCents))
-  const failed = await sendToSlack($, text)
-  $.ui.toast(failed ? `Swear jar: Slack post failed: ${failed}` : `Posted to ${channelLabel(cfg)}: ${text}`)
-}
-
 // Posts only from the account slackOnlyFor names; an account it can't see never posts.
 // The desktop app sets CLAUDE_CODE_USER_EMAIL; elsewhere set WTF_METER_ACCOUNT_EMAIL.
 async function canPost($: EngineInterface) {
@@ -101,12 +89,79 @@ async function canPost($: EngineInterface) {
   return email !== '' && email.endsWith(cfg.onlyFor)
 }
 
-async function skip($: EngineInterface) {
+const HEATED = LEVELS[2].min
+
+async function topicFor($: EngineInterface, texts: readonly string[]) {
+  const r = await $.model
+    .complete({ model: 'haiku', prompt: topicPrompt(texts), maxTokens: 16, timeoutMs: 20000 })
+    .catch(() => undefined)
+  return cleanTopic(r?.isAnswered ? r.text : undefined) // no answer: "something", still posts
+}
+
+// Drafts the exact line that will post; redrafted when a new swear changes the amount.
+async function draft($: EngineInterface) {
+  const b = await read($, pending)
+  if (!b?.queued) return
+  const text = postText(b.cents, await topicFor($, b.texts), await read($, jarCents), b.pick)
+  const isFirst = !b.preview
+  await update($, pending, p => (p && p.cents === b.cents ? { ...p, preview: text } : p))
+  if (isFirst) $.ui.toast(`Queued for ${channelLabel(cfg)}: ${text} Posts in 2 min; /wtf skip cancels.`)
+}
+
+function arm($: EngineInterface, ms: number) {
   timer?.cancel()
+  ticker?.cancel()
+  timer = $.clock.after(Math.max(0, ms), () => void flush($))
+  ticker = $.clock.every(15000, () => void update($, tick, n => n + 1))
+}
+
+function disarm() {
+  timer?.cancel()
+  ticker?.cancel()
   timer = undefined
+  ticker = undefined
+}
+
+// Adds a message to the current blow-up and queues the post once the session is Heated.
+async function track($: EngineInterface, text: string | null, cents: number, avg: number) {
+  const heated = avg >= HEATED
+  if (!heated) await update($, cooling, () => false)
+  let p: Pending | null = await read($, pending)
+  if (text) {
+    p = p
+      ? { ...p, cents: p.cents + cents, texts: [...p.texts, text] }
+      : { cents, texts: [text], queued: false, preview: null, pick: Math.random(), dueAt: 0 }
+  }
+  if (p && !p.queued && avg < LEVELS[1].min) p = null // calmed down without a blow-up
+  if (p && !p.queued && heated && !(await read($, cooling))) {
+    p = { ...p, queued: true, dueAt: (await $.clock.now()) + POST_DELAY_MS }
+    arm($, POST_DELAY_MS)
+  }
+  await update($, pending, () => p)
+  if (p?.queued && text) $.clock.after(0, () => void draft($))
+}
+
+// Posts the previewed line, once the delay is up or on Post now.
+async function flush($: EngineInterface) {
+  disarm()
+  const b = await read($, pending)
+  if (!b?.queued) return
+  await update($, pending, () => null)
+  await update($, cooling, () => true)
+  await update($, isPreviewOpen, () => false)
+  if (!(await canPost($))) return
+  const text = b.preview ?? postText(b.cents, await topicFor($, b.texts), await read($, jarCents), b.pick)
+  const failed = await sendToSlack($, text)
+  $.ui.toast(failed ? `Swear jar: Slack post failed: ${failed}` : `Posted to ${channelLabel(cfg)}: ${text}`)
+}
+
+async function skip($: EngineInterface) {
+  disarm()
   const had = await read($, pending)
   await update($, pending, () => null)
-  return had
+  await update($, isPreviewOpen, () => false)
+  if (had?.queued) await update($, cooling, () => true)
+  return had?.queued ? had : null
 }
 
 export const register: Register = (on, options) => {
@@ -121,8 +176,9 @@ export const register: Register = (on, options) => {
     if (isJar) {
       const kept = Number((await $.store.get(JAR_KEY)) ?? 0)
       await update($, jarCents, () => kept)
-      // A reload drops timers; a batch still waiting gets a fresh one.
-      if ((await read($, pending)) && (await canPost($))) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
+      // A reload drops timers; a queued post gets its timer back.
+      const waiting = await read($, pending)
+      if (waiting?.queued && (await canPost($))) arm($, waiting.dueAt - (await $.clock.now()))
     }
     await showStatus($)
     return next(e)
@@ -132,28 +188,22 @@ export const register: Register = (on, options) => {
     if (!isTyped(e.origin)) return next(e)
     const s = score(e.text)
 
+    const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits) }
+    const list = await update($, msgs, l => [...l, msg].slice(-500))
+
     if (isJar) {
-      if (s.total) {
-        const cents = s.total * CENTS_PER_POINT
+      const cents = s.total * CENTS_PER_POINT
+      if (cents) {
         const total = await update($, jarCents, c => c + cents)
         await $.store.set(JAR_KEY, total)
-        const posts = await canPost($)
-        if (posts) {
-          await update($, pending, p => ({ cents: (p?.cents ?? 0) + cents, texts: [...(p?.texts ?? []), e.text] }))
-          if (!timer) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
-        }
         const full = Math.floor(total / JAR_CENTS) > Math.floor((total - cents) / JAR_CENTS)
-        $.ui.toast(
-          `🪙 +${money(cents)} in the jar (${money(total)}).${full ? ' 🍺 Jar full: beer run!' : ''}` +
-            (posts ? ` Posting to ${channelLabel(cfg)} in 2 min; /wtf skip cancels.` : ''),
-        )
+        $.ui.toast(`🪙 +${money(cents)} in the jar (${money(total)}).${full ? ' 🍺 Jar full: beer run!' : ''}`)
       }
+      if (await canPost($)) await track($, cents ? e.text : null, cents, levelOf(list.map(m => m.score)).avg)
       await showStatus($)
       return next(e)
     }
 
-    const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits) }
-    const list = await update($, msgs, l => [...l, msg].slice(-500))
     const scores = list.map(m => m.score)
     const was = levelOf(scores.slice(0, -1)).level
     const now = levelOf(scores).level
@@ -194,7 +244,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const t = $.ui.resolve(e)
-    const { Box, Text, Button } = t
+    const { Box, Text, Button, Link } = t
     const hide = <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
 
     if (isJar) {
@@ -207,22 +257,45 @@ export const register: Register = (on, options) => {
       const fill = (cents % JAR_CENTS) / JAR_CENTS
       const amount = <Text bold color={JAR_COLOR}>🫙 {money(cents)}</Text>
       const left = <Text dimColor> {money(JAR_CENTS - (cents % JAR_CENTS))} to a beer run </Text>
-      const skipBtn = waiting
-        ? <Button key="skip" label={`Skip Slack post (${money(waiting.cents)})`} onPress={() => void skip($)} />
+      // A queued post shows as a small chip; pressing it opens the draft with its controls.
+      const queued = waiting?.queued ? waiting : null
+      await read($, tick) // redraw the countdown
+      const mins = queued ? Math.max(0, Math.ceil((queued.dueAt - (await $.clock.now())) / 60000)) : 0
+      const chip = queued
+        ? <Button key="preview" plain label={`↗ queued · ${mins ? `${mins} min` : '<1 min'}`} onPress={() => update($, isPreviewOpen, o => !o)} />
+        : null
+      const card = queued && (await read($, isPreviewOpen))
+        ? (
+          <Box flexDirection="column" borderStyle="round" borderColor={JAR_COLOR} paddingX={1}>
+            <Box flexDirection="row" gap={1}>
+              <Text dimColor>Posts to</Text>
+              {cfg.id ? <Link href={channelLink(cfg.id)} label={channelLabel(cfg)} /> : <Text>{channelLabel(cfg)}</Text>}
+              <Text dimColor>as you, in {mins ? `${mins} min` : 'under a minute'}</Text>
+            </Box>
+            <Text>{queued.preview ?? 'Drafting…'}</Text>
+            <Box flexDirection="row" gap={1}>
+              <Button key="post-now" label="Post now" onPress={() => void flush($)} />
+              <Button key="skip" label="Skip" onPress={() => void skip($)} />
+            </Box>
+          </Box>
+        )
         : null
 
       if (e.surface === 'terminal' || !('Svg' in t)) {
         const cells = 12
         const full = Math.round(fill * cells)
         return (
-          <Box flexDirection="row">
-            {amount}
-            <Text> </Text>
-            <Text color={JAR_COLOR}>{'█'.repeat(full)}</Text>
-            <Text dimColor>{'░'.repeat(cells - full)}</Text>
-            {left}
-            {skipBtn}
-            {hide}
+          <Box flexDirection="column">
+            <Box flexDirection="row">
+              {amount}
+              <Text> </Text>
+              <Text color={JAR_COLOR}>{'█'.repeat(full)}</Text>
+              <Text dimColor>{'░'.repeat(cells - full)}</Text>
+              {left}
+              {chip}
+              {hide}
+            </Box>
+            {card}
           </Box>
         )
       }
@@ -230,12 +303,15 @@ export const register: Register = (on, options) => {
       const W = 200, H = 10
       const bar = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><rect width="${W}" height="${H}" rx="5" fill="#8a8f94" fill-opacity="0.25"/><rect width="${fill ? Math.max(6, W * fill) : 0}" height="${H}" rx="5" fill="${JAR_COLOR}"/></svg>`
       return (
-        <Box flexDirection="row" alignItems="center" gap={1}>
-          {amount}
-          <Svg source={bar} alt={`Swear jar ${Math.round(fill * 100)}% full`} width={W} height={H} />
-          {left}
-          {skipBtn}
-          {hide}
+        <Box flexDirection="column" gap={1}>
+          <Box flexDirection="row" alignItems="center" gap={1}>
+            {amount}
+            <Svg source={bar} alt={`Swear jar ${Math.round(fill * 100)}% full`} width={W} height={H} />
+            {left}
+            {chip}
+            {hide}
+          </Box>
+          {card}
         </Box>
       )
     }
