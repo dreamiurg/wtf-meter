@@ -21,6 +21,16 @@ Works in the Claude Code terminal and the Code tab of the Claude desktop app. No
 
 <br clear="right">
 
+## See it
+
+**In the Claude desktop app** (mockup of the Code tab: Claude's windows can't be screen-captured, so this is drawn from the mod's real output):
+
+<img src="docs/screenshots/desk-meter.png" alt="Desktop mockup: each sweary message carries a colored pill like +3 · kurwa, a Meltdown strip with bars sits above the prompt, and the status bar reads 🔴 Meltdown · 5 WTFs ▲" width="760">
+
+**In the terminal** (real session, captured from `claude` and rendered as-is):
+
+<img src="docs/screenshots/meter-term.png" alt="Terminal: each sweary prompt is stamped [WTF +3 · kurwa], the strip above the prompt reads Meltdown with bars and avg 3.00 · rising, and the status line reads 🔴 Meltdown · 5 WTFs ▲" width="760">
+
 ## The four stages of a Claude Code session
 
 ![CALM, GRUMBLING (dammit), HEATED (WTF?!), MELTDOWN (KURWA!)](docs/levels.jpg)
@@ -43,12 +53,19 @@ stateDiagram-v2
 
 Inspired by Bud Light's "Swear Jar" ad: the office jar that paid for beer, until everyone started swearing on purpose. Switch `mode` to `jar` and every swear drops coins in, 25¢ per point (`damn` 25¢, `wtf` 50¢, `kurwa` 75¢). The jar never empties and carries over between sessions. Every $20 is a beer run.
 
+<img src="docs/screenshots/desk-jar.png" alt="Desktop mockup in jar mode: messages carry coin pills like 🪙 +$0.75 · kurwa, and the strip shows 🫙 $3.00, a progress bar, $17.00 to a beer run, and a Skip Slack post button" width="760">
+
+<details><summary>Jar mode in the terminal (real session)</summary>
+
+<img src="docs/screenshots/jar-term.png" alt="Terminal jar mode: prompts stamped [jar 🪙 +$1.50 · fucking], strip reads 🫙 $3.75 with a block progress bar and $16.25 to a beer run" width="760">
+
+</details>
+
 ### Post to a team Slack channel
 
 If Slack is connected in Claude (the Slack connector or the Slack plugin), the jar can post to a team channel as you:
 
-> 🫙 +$2.50 in the swear jar, fighting a release.
-> 🫙 +$1.75 in the swear jar, losing it at CI. 🍺 That fills my jar: $20.25 in all. Beer run!
+<img src="docs/screenshots/slack.png" alt="Mockup of a #swear-jar Slack channel: four teammates' posts like +$2.50 in the swear jar, fighting a flaky test, and one that fills a jar and calls a beer run" width="620">
 
 **Your words never reach Slack.** A post is built only from the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
 
