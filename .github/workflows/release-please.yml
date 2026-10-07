@@ -1,16 +1,39 @@
 name: Release Please
 
+# Every green push to main that has a feat: or fix: commit ships a release, so
+# anyone with auto-update on gets the new version without anyone merging a PR.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
     branches: [main]
+    types: [completed]
 
 permissions: {}
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  release-please:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      - name: Open or update the release PR
+        id: pr
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+
+      - name: Merge the release PR
+        if: ${{ steps.pr.outputs.pr }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ fromJSON(steps.pr.outputs.pr).number }}
+        run: gh pr merge "$PR" --squash --repo "$GITHUB_REPOSITORY"
+
+      # A merge made with GITHUB_TOKEN starts no new workflow run, so tag the release here.
+      - name: Tag and publish the release
+        if: ${{ steps.pr.outputs.pr }}
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0

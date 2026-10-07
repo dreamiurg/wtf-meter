@@ -107,6 +107,8 @@ claude plugin install wtf-meter@wtf-meter
 
 Start a new session after installing.
 
+**Get new versions automatically:** `/plugin` → **Marketplaces** → **wtf-meter** → **Enable auto-update**. Claude Code then checks for updates shortly after each session starts. Without it, update by hand with `claude plugin marketplace update wtf-meter && claude plugin update wtf-meter@wtf-meter`.
+
 ## Scoring
 
 Every word in [`hooks/lexicon.ts`](hooks/lexicon.ts) has a weight: 1 mild (`damn`, `kurde`, `блин`), 2 medium (`wtf`, `verdammt`, `сука`), 3 strong (the f-word, `kurwa`, `Scheiße`, the Russian and Ukrainian mat roots). Censored spellings that dictation tools produce (`f***`, `п***ц`) count too.
@@ -129,7 +131,7 @@ pre-commit install   # blocks secrets and personal data (emails, home paths, Sla
 
 Run a session with `claude --plugin-dir .` to load your working copy; saving a file reloads it. Disable the installed copy first (`/plugin disable wtf-meter@wtf-meter`), or every message counts twice. `tsc -p .` works after the first load, which lays the API types into `.claude-plugin/types/`.
 
-Releases are automatic: conventional commits (`feat:`, `fix:`) on `main` build up a release PR, and merging it tags the version and bumps `plugin.json`.
+Releases are automatic: once CI passes on `main`, any `feat:` or `fix:` commits ship as a new version (Release Please bumps `plugin.json`, tags, and writes the changelog).
 
 ## Credits
 
