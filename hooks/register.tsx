@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Msg } from '../types'
-import { channelIdIn, cleanTopic, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
+import { channelIdIn, channelLabel, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
 import { levelOf, score, stampColor } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
@@ -37,7 +37,7 @@ function meterStatus(list: readonly Msg[]) {
 const jarStatus = (cents: number) => `🫙 ${money(cents)} · ${money(JAR_CENTS - (cents % JAR_CENTS))} to a beer run`
 
 // Set from the plugin's options when the module registers; a reload resets them.
-const cfg = { isJar: false, channel: '', onlyFor: '' }
+const cfg = { isJar: false, channel: '', onlyFor: '', name: '', id: '' }
 let timer: { cancel: () => void } | undefined
 
 async function showStatus($: EngineInterface) {
@@ -57,14 +57,14 @@ async function sendToSlack($: EngineInterface, text: string): Promise<string | n
   if (!send) return 'no Slack connector in this session. Connect Slack in Claude, or clear the channel setting.'
   const server = send.name.slice('mcp__'.length, -'__slack_send_message'.length)
 
-  let channel = /^[CG][A-Z0-9]{8,}$/.test(cfg.channel) ? cfg.channel : String((await $.store.get(`channel:${cfg.channel}`)) ?? '')
+  let channel = cfg.id || String((await $.store.get(`channel:${cfg.name}`)) ?? '')
   if (!channel) {
     const found = await $.mcp
-      .call(server, 'slack_search_channels', { query: cfg.channel.replace(/^#/, '') })
+      .call(server, 'slack_search_channels', { query: cfg.name })
       .catch(() => undefined)
     channel = (found && !found.isError && channelIdIn(textOf(found))) || ''
-    if (!channel) return `couldn't find channel ${cfg.channel}. Put its ID (C…) in the channel setting.`
-    await $.store.set(`channel:${cfg.channel}`, channel)
+    if (!channel) return `couldn't find ${channelLabel(cfg)}. Add its ID (C…) after the name in the channel setting.`
+    await $.store.set(`channel:${cfg.name}`, channel)
   }
 
   let last = ''
@@ -89,7 +89,7 @@ async function flush($: EngineInterface) {
   const topic = cleanTopic(r?.isAnswered ? r.text : undefined) // no answer: "something", still posts
   const text = postText(batch.cents, topic, await read($, jarCents))
   const failed = await sendToSlack($, text)
-  $.ui.toast(failed ? `Swear jar: Slack post failed: ${failed}` : `Posted to ${cfg.channel}: ${text}`)
+  $.ui.toast(failed ? `Swear jar: Slack post failed: ${failed}` : `Posted to ${channelLabel(cfg)}: ${text}`)
 }
 
 // Posts only from the account slackOnlyFor names; an account it can't see never posts.
@@ -112,6 +112,7 @@ async function skip($: EngineInterface) {
 export const register: Register = (on, options) => {
   cfg.isJar = options.mode === 'jar'
   cfg.channel = String(options.slackChannel ?? '').trim()
+  Object.assign(cfg, parseChannel(cfg.channel))
   cfg.onlyFor = String(options.slackOnlyFor ?? '').trim().toLowerCase()
   const { isJar } = cfg
 
@@ -144,7 +145,7 @@ export const register: Register = (on, options) => {
         const full = Math.floor(total / JAR_CENTS) > Math.floor((total - cents) / JAR_CENTS)
         $.ui.toast(
           `🪙 +${money(cents)} in the jar (${money(total)}).${full ? ' 🍺 Jar full: beer run!' : ''}` +
-            (posts ? ` Posting to ${cfg.channel} in 2 min; /wtf skip cancels.` : ''),
+            (posts ? ` Posting to ${channelLabel(cfg)} in 2 min; /wtf skip cancels.` : ''),
         )
       }
       await showStatus($)
@@ -303,7 +304,7 @@ export const register: Register = (on, options) => {
       return { text: had ? `Swear jar: skipped the Slack post for ${money(had.cents)}. The coins stay in your jar.` : 'Swear jar: nothing waiting to post.' }
     }
     await update($, isHidden, () => false)
-    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${cfg.channel}.` : cfg.channel ? `. Not posting to ${cfg.channel} from this account.` : '. Slack posting is off: no channel set.'}` }
+    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${channelLabel(cfg)}.` : cfg.channel ? `. Not posting to ${channelLabel(cfg)} from this account.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')

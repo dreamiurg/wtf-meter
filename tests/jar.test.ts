@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { channelIdIn, cleanTopic, postText, TOPICS } from '../hooks/jar'
+import { channelIdIn, channelLabel, cleanTopic, parseChannel, postText, TOPICS } from '../hooks/jar'
 
 const JAR = { mode: 'jar', slackChannel: 'swear-jar' }
 const SEND = 'mcp__claude_ai_Slack__slack_send_message'
@@ -19,6 +19,14 @@ test('post text is amount and topic; a full jar adds the beer run', async () => 
   expect(postText(250, 'a release', 1000, 0)).toBe('🫙 +$2.50 in the swear jar, fighting a release.')
   expect(postText(75, 'CI', 2050, 0)).toContain('That fills my jar: $20.50 in all. Beer run!')
   expect(channelIdIn('#swear-jar (C07ABCDEF12) 3 members')).toBe('C07ABCDEF12')
+})
+
+test('the channel setting takes a name, an ID or both, and always reads as a name', async () => {
+  expect(parseChannel('#swear-jar C0C7JH2AC6N')).toEqual({ name: 'swear-jar', id: 'C0C7JH2AC6N' })
+  expect(parseChannel('swear-jar')).toEqual({ name: 'swear-jar', id: '' })
+  expect(parseChannel('C0C7JH2AC6N')).toEqual({ name: '', id: 'C0C7JH2AC6N' })
+  expect(channelLabel(parseChannel('C0C7JH2AC6N'))).toBe('the Slack channel')
+  expect(channelLabel(parseChannel('swear-jar C0C7JH2AC6N'))).toBe('#swear-jar')
 })
 
 /** Stands in for the session: a Slack connector whose send takes `text`, not `message`. */
