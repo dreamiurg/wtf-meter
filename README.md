@@ -85,7 +85,7 @@ Setup: create the channel, then set two plugin options (`/config` in the termina
 }
 ```
 
-Two accounts on one machine (say, personal and work)? Add `"slackOnlyFor": "@company.com"` and only the work account posts. The desktop app tells the mod who is signed in; in the terminal, set `WTF_METER_ACCOUNT_EMAIL` in that account's settings `env`. An account the mod can't identify never posts.
+Two accounts on one machine (say, personal and work)? Add `"jarOnlyFor": "@company.com"` to keep the jar on the work account and the meter everywhere else, and `"slackOnlyFor": "@company.com"` so only the work account posts. The desktop app tells the mod who is signed in; in the terminal, set `WTF_METER_ACCOUNT_EMAIL` in that account's settings `env`. An account the mod can't identify never posts.
 
 `slackChannel` takes the channel name, optionally followed by its ID (`"swear-jar C0123ABCD"`, the ID from the channel's "Copy link"). Add the ID if the name matches more than one channel. Messages always show the name. No Slack connected: the jar stays local and a toast says so.
 

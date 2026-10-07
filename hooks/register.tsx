@@ -40,12 +40,12 @@ function meterStatus(list: readonly Msg[]) {
 const jarStatus = (cents: number) => `🫙 ${money(cents)} · ${money(JAR_CENTS - (cents % JAR_CENTS))} to a beer run`
 
 // Set from the plugin's options when the module registers; a reload resets them.
-const cfg = { isJar: false, channel: '', onlyFor: '', name: '', id: '' }
+const cfg = { mode: 'meter', jarOnlyFor: '', jar: undefined as boolean | undefined, channel: '', onlyFor: '', name: '', id: '' }
 let timer: { cancel: () => void } | undefined
 let ticker: { cancel: () => void } | undefined // redraws the countdown while a post waits
 
 async function showStatus($: EngineInterface) {
-  if (cfg.isJar) return $.ui.status(jarStatus(await read($, jarCents)))
+  if (await jarMode($)) return $.ui.status(jarStatus(await read($, jarCents)))
   const list = await read($, msgs)
   $.ui.status(list.length ? meterStatus(list) : undefined)
 }
@@ -80,13 +80,23 @@ async function sendToSlack($: EngineInterface, text: string): Promise<string | n
   return last.slice(0, 160) || 'Slack refused the message.'
 }
 
-// Posts only from the account slackOnlyFor names; an account it can't see never posts.
-// The desktop app sets CLAUDE_CODE_USER_EMAIL; elsewhere set WTF_METER_ACCOUNT_EMAIL.
-async function canPost($: EngineInterface) {
-  if (!cfg.channel) return false
-  if (!cfg.onlyFor) return true
+// The signed-in account: the desktop app sets CLAUDE_CODE_USER_EMAIL; elsewhere set
+// WTF_METER_ACCOUNT_EMAIL. An account the mod can't see never matches.
+async function accountIs($: EngineInterface, suffix: string) {
   const email = ((await $.env.get('WTF_METER_ACCOUNT_EMAIL')) ?? (await $.env.get('CLAUDE_CODE_USER_EMAIL')) ?? '').toLowerCase()
-  return email !== '' && email.endsWith(cfg.onlyFor)
+  return email !== '' && email.endsWith(suffix)
+}
+
+// Jar mode, unless jarOnlyFor names another account; that account gets the meter.
+async function jarMode($: EngineInterface) {
+  cfg.jar ??= cfg.mode === 'jar' && (!cfg.jarOnlyFor || (await accountIs($, cfg.jarOnlyFor)))
+  return cfg.jar
+}
+
+// Posts only from the account slackOnlyFor names, and only in jar mode.
+async function canPost($: EngineInterface) {
+  if (!cfg.channel || !(await jarMode($))) return false
+  return !cfg.onlyFor || accountIs($, cfg.onlyFor)
 }
 
 const HEATED = LEVELS[2].min
@@ -165,15 +175,16 @@ async function skip($: EngineInterface) {
 }
 
 export const register: Register = (on, options) => {
-  cfg.isJar = options.mode === 'jar'
+  cfg.mode = String(options.mode ?? 'meter')
+  cfg.jarOnlyFor = String(options.jarOnlyFor ?? '').trim().toLowerCase()
+  cfg.jar = undefined
   cfg.channel = String(options.slackChannel ?? '').trim()
   Object.assign(cfg, parseChannel(cfg.channel))
   cfg.onlyFor = String(options.slackOnlyFor ?? '').trim().toLowerCase()
-  const { isJar } = cfg
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'wtf', description: 'WTF meter: show the strip again and print the tally', argumentHint: '[skip]' })
-    if (isJar) {
+    if (await jarMode($)) {
       const kept = Number((await $.store.get(JAR_KEY)) ?? 0)
       await update($, jarCents, () => kept)
       // A reload drops timers; a queued post gets its timer back.
@@ -191,7 +202,7 @@ export const register: Register = (on, options) => {
     const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits) }
     const list = await update($, msgs, l => [...l, msg].slice(-500))
 
-    if (isJar) {
+    if (await jarMode($)) {
       const cents = s.total * CENTS_PER_POINT
       if (cents) {
         const total = await update($, jarCents, c => c + cents)
@@ -217,10 +228,11 @@ export const register: Register = (on, options) => {
 
   // Stamp each of your messages that scored: a colored pill under the bubble
   // on the desktop, a text line where only text draws.
-  on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     if (!isTyped(e.props.origin)) return next(e)
     const s = score(e.props.text)
     if (!s.total) return next(e)
+    const isJar = await jarMode($)
     const label = isJar ? `🪙 +${money(s.total * CENTS_PER_POINT)} · ${worstOf(s.hits)}` : `+${s.total} · ${worstOf(s.hits)}`
 
     if (e.surface !== 'desktop') {
@@ -247,7 +259,7 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button, Link } = t
     const hide = <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
 
-    if (isJar) {
+    if (await jarMode($)) {
       const cents = await read($, jarCents)
       const waiting = await read($, pending)
       if (!cents && !waiting) return next(e)
@@ -380,7 +392,7 @@ export const register: Register = (on, options) => {
       return { text: had ? `Swear jar: skipped the Slack post for ${money(had.cents)}. The coins stay in your jar.` : 'Swear jar: nothing waiting to post.' }
     }
     await update($, isHidden, () => false)
-    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${channelLabel(cfg)}.` : cfg.channel ? `. Not posting to ${channelLabel(cfg)} from this account.` : '. Slack posting is off: no channel set.'}` }
+    if (await jarMode($)) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${channelLabel(cfg)}.` : cfg.channel ? `. Not posting to ${channelLabel(cfg)} from this account.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')

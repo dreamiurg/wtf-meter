@@ -25,6 +25,12 @@
         "jar"
       ]
     },
+    "jarOnlyFor": {
+      "type": "string",
+      "title": "Jar mode only for this account",
+      "description": "Jar mode applies only when the signed-in email ends with this, e.g. @company.com; other accounts get the meter. Empty: every account.",
+      "default": ""
+    },
     "slackChannel": {
       "type": "string",
       "title": "Slack channel",

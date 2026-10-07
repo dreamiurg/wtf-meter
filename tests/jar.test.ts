@@ -146,3 +146,13 @@ test('the strip shows a queued chip that opens the draft with Post now', { optio
   }
   expect(sent.length).toBe(1)
 })
+
+test('jarOnlyFor gives other accounts the meter', { options: { ...JAR, jarOnlyFor: '@work.example' } }, async ($, on) => {
+  const { clock, sent, toasts } = world(on, { slack: true })
+  mock.env(on, { CLAUDE_CODE_USER_EMAIL: 'me@home.example' })
+  await say($, 'kurwa')
+  await clock.advance(5 * 60 * 1000)
+  expect(toasts.join(' ')).not.toContain('in the jar')
+  expect(toasts.join(' ')).toContain('Meltdown')
+  expect(sent).toEqual([])
+})
