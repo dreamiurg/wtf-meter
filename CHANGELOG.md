@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/dreamiurg/wtf-meter/compare/wtf-meter-v0.6.0...wtf-meter-v0.7.0) (2026-10-07)
+
+
+### Features
+
+* jarOnlyFor keeps jar mode on one account, the meter on the rest ([ce82157](https://github.com/dreamiurg/wtf-meter/commit/ce82157dcfd29dcc9be16b985a259fc480d95d85))
+
 ## [0.6.0](https://github.com/dreamiurg/wtf-meter/compare/wtf-meter-v0.5.1...wtf-meter-v0.6.0) (2026-10-07)
 
 
