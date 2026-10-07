@@ -50,7 +50,7 @@ Point the jar at a Slack channel and your team sees who is paying in:
 > 🫙 Dima put $2.50 in the swear jar, fighting a release.
 > 🫙 Serge put $1.75 in the swear jar, losing it at CI. 🍺 That fills Serge's jar: $20.25 in all. Beer run!
 
-**Your words never leave your machine.** A post is built only from your name, the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
+**Your words never reach Slack.** A post is built only from your name, the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
 
 Posts wait 2 minutes, so a burst of swearing becomes one post. `/wtf skip` or the strip's **Skip Slack post** button cancels the waiting post; the coins stay in your jar.
 
