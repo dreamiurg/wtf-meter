@@ -65,7 +65,7 @@ claude plugin validate .
 claude plugin test .
 ```
 
-Run a session with `claude --plugin-dir .` to load your working copy; saving a file reloads it.
+Run a session with `claude --plugin-dir .` to load your working copy; saving a file reloads it. Disable the installed copy first (`/plugin disable wtf-meter@wtf-meter`), or every message counts twice. `tsc -p .` works after the first load, which lays the API types into `.claude-plugin/types/`.
 
 ## License
 
