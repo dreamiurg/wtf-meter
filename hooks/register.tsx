@@ -37,7 +37,7 @@ function meterStatus(list: readonly Msg[]) {
 const jarStatus = (cents: number) => `🫙 ${money(cents)} · ${money(JAR_CENTS - (cents % JAR_CENTS))} to a beer run`
 
 // Set from the plugin's options when the module registers; a reload resets them.
-const cfg = { isJar: false, channel: '' }
+const cfg = { isJar: false, channel: '', onlyFor: '' }
 let timer: { cancel: () => void } | undefined
 
 async function showStatus($: EngineInterface) {
@@ -81,7 +81,7 @@ async function flush($: EngineInterface) {
   timer = undefined
   const batch = await read($, pending)
   await update($, pending, () => null)
-  if (!batch || !cfg.channel) return
+  if (!batch || !(await canPost($))) return
 
   const r = await $.model
     .complete({ model: 'haiku', prompt: topicPrompt(batch.texts), maxTokens: 12, timeoutMs: 20000 })
@@ -90,6 +90,15 @@ async function flush($: EngineInterface) {
   const text = postText(batch.cents, topic, await read($, jarCents))
   const failed = await sendToSlack($, text)
   $.ui.toast(failed ? `Swear jar: Slack post failed: ${failed}` : `Posted to ${cfg.channel}: ${text}`)
+}
+
+// Posts only from the account slackOnlyFor names; an account it can't see never posts.
+// The desktop app sets CLAUDE_CODE_USER_EMAIL; elsewhere set WTF_METER_ACCOUNT_EMAIL.
+async function canPost($: EngineInterface) {
+  if (!cfg.channel) return false
+  if (!cfg.onlyFor) return true
+  const email = ((await $.env.get('WTF_METER_ACCOUNT_EMAIL')) ?? (await $.env.get('CLAUDE_CODE_USER_EMAIL')) ?? '').toLowerCase()
+  return email !== '' && email.endsWith(cfg.onlyFor)
 }
 
 async function skip($: EngineInterface) {
@@ -103,8 +112,8 @@ async function skip($: EngineInterface) {
 export const register: Register = (on, options) => {
   cfg.isJar = options.mode === 'jar'
   cfg.channel = String(options.slackChannel ?? '').trim()
+  cfg.onlyFor = String(options.slackOnlyFor ?? '').trim().toLowerCase()
   const { isJar } = cfg
-  const posts = isJar && cfg.channel !== ''
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'wtf', description: 'WTF meter: show the strip again and print the tally', argumentHint: '[skip]' })
@@ -112,7 +121,7 @@ export const register: Register = (on, options) => {
       const kept = Number((await $.store.get(JAR_KEY)) ?? 0)
       await update($, jarCents, () => kept)
       // A reload drops timers; a batch still waiting gets a fresh one.
-      if (posts && (await read($, pending))) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
+      if ((await read($, pending)) && (await canPost($))) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
     }
     await showStatus($)
     return next(e)
@@ -127,6 +136,7 @@ export const register: Register = (on, options) => {
         const cents = s.total * CENTS_PER_POINT
         const total = await update($, jarCents, c => c + cents)
         await $.store.set(JAR_KEY, total)
+        const posts = await canPost($)
         if (posts) {
           await update($, pending, p => ({ cents: (p?.cents ?? 0) + cents, texts: [...(p?.texts ?? []), e.text] }))
           if (!timer) timer = $.clock.after(POST_DELAY_MS, () => void flush($))
@@ -293,7 +303,7 @@ export const register: Register = (on, options) => {
       return { text: had ? `Swear jar: skipped the Slack post for ${money(had.cents)}. The coins stay in your jar.` : 'Swear jar: nothing waiting to post.' }
     }
     await update($, isHidden, () => false)
-    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${posts ? `. Posting to ${cfg.channel}.` : '. Slack posting is off: no channel set.'}` }
+    if (isJar) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${cfg.channel}.` : cfg.channel ? `. Not posting to ${cfg.channel} from this account.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')

@@ -63,6 +63,15 @@ test('without a Slack connector the jar stays local and says why', { options: JA
   expect(toasts.at(-1)).toContain('no Slack connector')
 })
 
+test('posts only from the account slackOnlyFor names', { options: { ...JAR, slackOnlyFor: '@work.example' } }, async ($, on) => {
+  const { clock, sent, toasts } = world(on, { slack: true })
+  mock.env(on, { CLAUDE_CODE_USER_EMAIL: 'me@home.example' })
+  await $.prompt.submit({ text: 'kurwa', wait: false, origin: { kind: 'composer' } })
+  await clock.advance(5 * 60 * 1000)
+  expect(sent).toEqual([])
+  expect(toasts.join(' ')).not.toContain('Posting to')
+})
+
 test('/wtf skip cancels the waiting post', { options: JAR }, async ($, on) => {
   const { clock, sent } = world(on, { slack: true })
   await $.prompt.submit({ text: 'kurwa', wait: false, origin: { kind: 'composer' } })

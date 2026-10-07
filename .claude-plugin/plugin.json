@@ -1,6 +1,6 @@
 {
   "name": "wtf-meter",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Counts the swearing in your prompts (English, German, Polish, Russian, Ukrainian) and shows how heated the session is getting",
   "author": {
     "name": "dreamiurg"
@@ -29,6 +29,12 @@
       "type": "string",
       "title": "Slack channel",
       "description": "Jar mode posts here through your Slack connector, e.g. swear-jar or a channel ID. Empty: the jar stays local.",
+      "default": ""
+    },
+    "slackOnlyFor": {
+      "type": "string",
+      "title": "Post only from this account",
+      "description": "Jar mode posts only when the signed-in email ends with this, e.g. @company.com. Empty: any account.",
       "default": ""
     }
   }
