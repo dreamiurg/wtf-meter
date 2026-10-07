@@ -27,13 +27,13 @@ jobs:
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
 
       - name: Merge the release PR
-        if: ${{ steps.pr.outputs.pr }}
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ fromJSON(steps.pr.outputs.pr).number }}
-        run: gh pr merge "$PR" --squash --repo "$GITHUB_REPOSITORY"
+        run: |
+          PR=$(gh pr list --repo "$GITHUB_REPOSITORY" --label "autorelease: pending" --state open --json number -q '.[0].number')
+          if [ -n "$PR" ]; then gh pr merge "$PR" --squash --repo "$GITHUB_REPOSITORY"; else echo "No release PR to merge."; fi
 
       # A merge made with GITHUB_TOKEN starts no new workflow run, so tag the release here.
+      # With nothing merged this is a no-op.
       - name: Tag and publish the release
-        if: ${{ steps.pr.outputs.pr }}
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
