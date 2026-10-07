@@ -1,0 +1,16 @@
+{
+  "name": "wtf-meter",
+  "owner": {
+    "name": "dreamiurg"
+  },
+  "metadata": {
+    "description": "WTF meter: a Claude Code mod that keeps score of your swearing"
+  },
+  "plugins": [
+    {
+      "name": "wtf-meter",
+      "source": "./",
+      "description": "Counts the swearing in your prompts (English, Russian, Ukrainian) and shows how heated the session is getting"
+    }
+  ]
+}
