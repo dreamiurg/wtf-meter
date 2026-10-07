@@ -50,7 +50,7 @@ export function postText(cents: number, topic: Topic, totalCents: number, pick =
 /** A Slack channel id (C…, G…) in a tool result's text, if any. */
 export const channelIdIn = (text: string) => /\b[CG][A-Z0-9]{8,}\b/.exec(text)?.[0]
 
-/** `slackChannel` as written: a name, an ID, or both ("swear-jar C0C7JH2AC6N"). */
+/** `slackChannel` as written: a name, an ID, or both ("swear-jar C0FAKE0CHAN"). */
 export function parseChannel(raw: string): { name: string; id: string } {
   const parts = raw.split(/[\s,|]+/).filter(Boolean)
   const id = parts.find(p => /^[CG][A-Z0-9]{8,}$/.test(p)) ?? ''

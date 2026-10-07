@@ -1,5 +1,7 @@
 # WTF meter
 
+[![CI](https://github.com/dreamiurg/wtf-meter/actions/workflows/ci.yml/badge.svg)](https://github.com/dreamiurg/wtf-meter/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ![GOOD SESSION vs BAD SESSION: two doors labeled CLAUDE CODE, the bad one surrounded by WTF, KURWA!, SCHEISSE, DUDE WTF, WHY DID YOU DELETE THE TESTS](docs/hero.jpg)
 
 In 2008 Thom Holwerda drew the definitive code quality metric for [OSNews](https://www.osnews.com/story/19557/Fools): two doors marked CODE REVIEW, and the only number that matters is how many WTFs per minute come out from behind them. Robert C. Martin opened *Clean Code* with it.
@@ -120,9 +122,12 @@ Meter scores live in the session's own state and go away with it; the jar total 
 ```bash
 claude plugin validate .
 claude plugin test .
+pre-commit install   # blocks secrets and personal data (emails, home paths, Slack IDs) on commit
 ```
 
 Run a session with `claude --plugin-dir .` to load your working copy; saving a file reloads it. Disable the installed copy first (`/plugin disable wtf-meter@wtf-meter`), or every message counts twice. `tsc -p .` works after the first load, which lays the API types into `.claude-plugin/types/`.
+
+Releases are automatic: conventional commits (`feat:`, `fix:`) on `main` build up a release PR, and merging it tags the version and bumps `plugin.json`.
 
 ## Credits
 

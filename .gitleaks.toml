@@ -1,0 +1,26 @@
+# Secrets (gitleaks defaults) plus personal data that should never ship in a public repo.
+title = "wtf-meter"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "personal-email"
+description = "A real email address"
+regex = '''[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}'''
+[[rules.allowlists]]
+regexTarget = "match"
+regexes = ['''@users\.noreply\.github\.com''', '''noreply@anthropic\.com''', '''@[a-z.-]*example(?:\.[a-z]+)?\b''', '''@[a-z.-]*\.test\b''']
+
+[[rules]]
+id = "home-path"
+description = "A local home directory path (leaks a username)"
+regex = '''/(?:Users|home)/[A-Za-z][A-Za-z0-9._-]+/'''
+
+[[rules]]
+id = "slack-id"
+description = "A real Slack channel, user or workspace ID"
+regex = '''\b[CGUTW]0[A-Z0-9]{8,10}\b'''
+[[rules.allowlists]]
+regexTarget = "match"
+regexes = ['''0FAKE''']

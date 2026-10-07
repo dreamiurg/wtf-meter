@@ -1,0 +1,25 @@
+# Keep secrets and personal data out of a public repo. `pre-commit install` once per clone.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: detect-private-key
+
+  # Secrets, plus the personal-data rules in .gitleaks.toml (emails, home paths, Slack IDs)
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: semgrep
+        name: semgrep SAST
+        entry: semgrep scan --config auto --error --quiet
+        language: system
+        pass_filenames: false

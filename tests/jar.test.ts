@@ -18,15 +18,15 @@ test('a Slack post can only say a topic from the list', async () => {
 test('post text is amount and topic; a full jar adds the beer run', async () => {
   expect(postText(250, 'a release', 1000, 0)).toBe('🫙 +$2.50 in the swear jar, fighting a release.')
   expect(postText(75, 'CI', 2050, 0)).toContain('That fills my jar: $20.50 in all. Beer run!')
-  expect(channelIdIn('#swear-jar (C07ABCDEF12) 3 members')).toBe('C07ABCDEF12')
+  expect(channelIdIn('#swear-jar (C0FAKE0JAR1) 3 members')).toBe('C0FAKE0JAR1')
 })
 
 test('the channel setting takes a name, an ID or both, and always reads as a name', async () => {
-  expect(parseChannel('#swear-jar C0C7JH2AC6N')).toEqual({ name: 'swear-jar', id: 'C0C7JH2AC6N' })
+  expect(parseChannel('#swear-jar C0FAKE0CHAN')).toEqual({ name: 'swear-jar', id: 'C0FAKE0CHAN' })
   expect(parseChannel('swear-jar')).toEqual({ name: 'swear-jar', id: '' })
-  expect(parseChannel('C0C7JH2AC6N')).toEqual({ name: '', id: 'C0C7JH2AC6N' })
-  expect(channelLabel(parseChannel('C0C7JH2AC6N'))).toBe('the Slack channel')
-  expect(channelLabel(parseChannel('swear-jar C0C7JH2AC6N'))).toBe('#swear-jar')
+  expect(parseChannel('C0FAKE0CHAN')).toEqual({ name: '', id: 'C0FAKE0CHAN' })
+  expect(channelLabel(parseChannel('C0FAKE0CHAN'))).toBe('the Slack channel')
+  expect(channelLabel(parseChannel('swear-jar C0FAKE0CHAN'))).toBe('#swear-jar')
 })
 
 /** Stands in for the session: a Slack connector whose send takes `text`, not `message`. */
@@ -41,7 +41,7 @@ function world(on: On, opts: { slack: boolean }) {
   on('model.complete', () => ({ value: { isAnswered: true, text: 'a deploy', usage: {} } }) as never)
   on('tool.list', () => ({ value: opts.slack ? [{ name: 'Read', description: '', mcp: false }, { name: SEND, description: '', mcp: true }] : [] }) as never)
   on('mcp.call', (_$, e) => {
-    if (e.tool === 'slack_search_channels') return { value: { isError: false, content: [{ type: 'text', text: '#swear-jar C07ABCDEF12' }] } } as never
+    if (e.tool === 'slack_search_channels') return { value: { isError: false, content: [{ type: 'text', text: '#swear-jar C0FAKE0JAR1' }] } } as never
     if ('message' in e.args) return { value: { isError: true, content: [{ type: 'text', text: 'unknown argument: message' }] } } as never
     sent.push({ server: e.server, ...e.args })
     return { value: { isError: false, content: [{ type: 'text', text: 'ok' }] } } as never
@@ -58,7 +58,7 @@ test('jar mode posts a sanitized line through the Slack connector, never the pro
   await clock.advance(2 * 60 * 1000)
   expect(sent.length).toBe(1)
   expect(sent[0]!.server).toBe('claude_ai_Slack')
-  expect(sent[0]!.channel_id).toBe('C07ABCDEF12')
+  expect(sent[0]!.channel_id).toBe('C0FAKE0JAR1')
   expect(String(sent[0]!.text)).toMatch(/^🫙 \+\$1\.00 in the swear jar, [a-z ]+ a deploy\.$/)
   expect(JSON.stringify(sent)).not.toContain('ACME')
 })
