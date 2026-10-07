@@ -1,10 +1,41 @@
 {
   "name": "wtf-meter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Counts the swearing in your prompts (English, German, Polish, Russian, Ukrainian) and shows how heated the session is getting",
-  "author": { "name": "dreamiurg" },
+  "author": {
+    "name": "dreamiurg"
+  },
   "homepage": "https://github.com/dreamiurg/wtf-meter",
   "license": "MIT",
-  "keywords": ["fun", "mood", "profanity", "mod"],
-  "types": "./types/index.d.ts"
+  "keywords": [
+    "fun",
+    "mood",
+    "profanity",
+    "mod"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "Mode",
+      "description": "meter: how heated this session is (cools down). jar: a swear jar that only fills, 25 cents per point.",
+      "default": "meter",
+      "options": [
+        "meter",
+        "jar"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "title": "Name in Slack posts",
+      "description": "Jar mode: how teammates see you in the Slack channel.",
+      "default": ""
+    },
+    "slackWebhookUrl": {
+      "type": "string",
+      "title": "Slack incoming webhook URL",
+      "description": "Jar mode posts to this channel webhook. Leave empty to keep the jar local.",
+      "default": ""
+    }
+  }
 }

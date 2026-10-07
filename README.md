@@ -15,8 +15,9 @@ The code review is a chat with Claude now, and the WTFs are typed. So this is a 
 - The status line keeps score: `WTF 9 · 3.0/msg ▲ Meltdown`
 - A toast pops when the session changes level
 - `/wtf` prints the tally
+- Or switch to [swear jar mode](#swear-jar-mode) and let the team see who is paying in
 
-Works in the Claude Code terminal and the Code tab of the Claude desktop app. Nothing leaves your machine.
+Works in the Claude Code terminal and the Code tab of the Claude desktop app. Nothing leaves your machine unless you turn on Slack posting, and even then your words don't.
 
 <br clear="right">
 
@@ -37,6 +38,41 @@ stateDiagram-v2
   Heated --> Grumbling: avg < 1.5
   Grumbling --> Calm: avg < 0.6
 ```
+
+## Swear jar mode
+
+Inspired by Bud Light's "Swear Jar" ad: the office jar that paid for beer, until everyone started swearing on purpose. Switch `mode` to `jar` and every swear drops coins in, 25¢ per point (`damn` 25¢, `wtf` 50¢, `kurwa` 75¢). The jar never empties and carries over between sessions. Every $20 is a beer run.
+
+### Post to a team Slack channel
+
+Point the jar at a Slack channel and your team sees who is paying in:
+
+> 🫙 Dima put $2.50 in the swear jar, fighting a release.
+> 🫙 Serge put $1.75 in the swear jar, losing it at CI. 🍺 That fills Serge's jar: $20.25 in all. Beer run!
+
+**Your words never leave your machine.** A post is built only from your name, the amount and one topic picked from a fixed list (`a flaky test`, `a deploy`, `CI`, `a merge conflict`, `the AI itself`, …; see [`hooks/jar.ts`](hooks/jar.ts)). A small model picks the topic, and any answer that is not exactly on the list becomes `something`. File names, project names, numbers and your actual message can't get into a post, whatever the model says.
+
+Posts wait 2 minutes, so a burst of swearing becomes one post. `/wtf skip` or the strip's **Skip Slack post** button cancels the waiting post; the coins stay in your jar.
+
+Setup:
+
+1. Create the channel, e.g. `#swear-jar`.
+2. Make an incoming webhook for it: [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From scratch → Incoming Webhooks → on → Add New Webhook → pick the channel. Copy the `https://hooks.slack.com/services/...` URL. Share it with your team: one webhook serves everyone.
+3. Set the plugin options, from `/config` in the terminal, or in `~/.claude/settings.json`:
+
+```json
+"pluginConfigs": {
+  "wtf-meter@wtf-meter": {
+    "options": {
+      "mode": "jar",
+      "name": "Dima",
+      "slackWebhookUrl": "https://hooks.slack.com/services/..."
+    }
+  }
+}
+```
+
+The webhook URL sits in your settings file in plain text. Anyone holding it can post to that channel, so treat it like a password.
 
 ## Install
 
@@ -66,7 +102,7 @@ Only what you type counts. Background task notifications, scheduled prompts and 
 
 ## Privacy
 
-Scores live in the session's own state and go away with the session. The mod never changes what Claude reads: the stamps change only how your message is drawn.
+Meter scores live in the session's own state and go away with it; the jar total is kept in the plugin's local store. The stamps change only how your message is drawn: Claude still reads exactly what you typed. Slack posting is off until you set a webhook, and a post never contains your words (see [swear jar mode](#swear-jar-mode)). Picking the topic is one small model call through your own Claude Code session.
 
 ## Develop
 
