@@ -126,7 +126,7 @@ Meter scores live in the session's own state and go away with it; the jar total 
 ```bash
 claude plugin validate .
 claude plugin test .
-pre-commit install   # blocks secrets and personal data (emails, home paths, Slack IDs) on commit
+pre-commit install   # blocks secrets and personal data (emails, home paths) on commit
 ```
 
 Run a session with `claude --plugin-dir .` to load your working copy; saving a file reloads it. Disable the installed copy first (`/plugin disable wtf-meter@wtf-meter`), or every message counts twice. `tsc -p .` works after the first load, which lays the API types into `.claude-plugin/types/`.

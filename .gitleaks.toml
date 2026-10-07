@@ -1,4 +1,5 @@
 # Secrets (gitleaks defaults) plus personal data that should never ship in a public repo.
+# Slack IDs are left alone: they're opaque without workspace access.
 title = "wtf-meter"
 
 [extend]
@@ -16,11 +17,3 @@ regexes = ['''@users\.noreply\.github\.com''', '''noreply@anthropic\.com''', '''
 id = "home-path"
 description = "A local home directory path (leaks a username)"
 regex = '''/(?:Users|home)/[A-Za-z][A-Za-z0-9._-]+/'''
-
-[[rules]]
-id = "slack-id"
-description = "A real Slack channel, user or workspace ID"
-regex = '''\b[CGUTW]0[A-Z0-9]{8,10}\b'''
-[[rules.allowlists]]
-regexTarget = "match"
-regexes = ['''0FAKE''']
