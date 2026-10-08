@@ -33,7 +33,7 @@ jobs:
           # Only Release Please's own PR: its branch, opened by the Actions bot, from this repo.
           # Filtered here, not with --label/--author: those go through the search index,
           # which misses the PR Release Please opened a second ago.
-          PRS=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --head release-please--branches--main--components--wtf-meter \
+          PRS=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --head release-please--branches--main--components--wtf-meter --limit 1000 \
             --json number,headRepositoryOwner,author,labels \
             -q "[.[] | select(.headRepositoryOwner.login == \"$GITHUB_REPOSITORY_OWNER\" and .author.login == \"app/github-actions\" and any(.labels[]; .name == \"autorelease: pending\")) | .number] | @sh")
           set -- $PRS
