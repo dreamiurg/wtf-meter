@@ -31,10 +31,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Only Release Please's own PR: its branch, opened by the Actions bot, from this repo.
+          # Filtered here, not with --label/--author: those go through the search index,
+          # which misses the PR Release Please opened a second ago.
           PRS=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --head release-please--branches--main--components--wtf-meter \
-            --label "autorelease: pending" --author "app/github-actions" \
-            --json number,headRepositoryOwner \
-            -q "[.[] | select(.headRepositoryOwner.login == \"$GITHUB_REPOSITORY_OWNER\") | .number] | @sh")
+            --json number,headRepositoryOwner,author,labels \
+            -q "[.[] | select(.headRepositoryOwner.login == \"$GITHUB_REPOSITORY_OWNER\" and .author.login == \"app/github-actions\" and any(.labels[]; .name == \"autorelease: pending\")) | .number] | @sh")
           set -- $PRS
           if [ $# -eq 0 ]; then echo "No release PR to merge."; exit 0; fi
           if [ $# -gt 1 ]; then echo "More than one release PR ($PRS); not merging."; exit 1; fi
