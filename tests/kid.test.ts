@@ -19,6 +19,8 @@ test('swaps by weight in the message language, leaving mild words alone', async 
 
 test('a message scoring 6 or more gets the full phrase', async () => {
   expect(kidVersion('fucking shit')?.swap).toBe('boogerbeans on toast!')
+  // mild words count toward it, like the meter's red stamp
+  expect(kidVersion('fucking hell, wtf')?.swap).toBe('boogerbeans on toast!')
   expect(kidVersion('kurwa, ja pierdolę')?.swap).toBe('o matko i córko!')
 })
 
@@ -56,15 +58,18 @@ test('kid mode rewrites the stamp, draws the streak and toasts a broken streak',
   expect(await desk.find({ type: 'Text', text: /you typed: wtf/ })).toBeDefined()
   await desk.unmount()
 
-  const band = await $.ui.mount({
-    plugin: 'wtf-meter', surface: 'desktop', component: 'AbovePrompt',
-    props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
-  })
-  expect(await band.find({ type: 'Text', text: /Clean for 0 messages/ })).toBeDefined()
-  expect(await band.find({ type: 'Text', text: /best 5 · 2 swaps this session/ })).toBeDefined()
-  await band.press({ key: 'hide' })
-  expect(await band.find({ key: 'show' })).toBeDefined()
-  await band.unmount()
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const band = await $.ui.mount({
+      plugin: 'wtf-meter', surface, component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
+    })
+    expect(await band.find({ type: 'Text', text: /Clean for 0 messages/ })).toBeDefined()
+    expect(await band.find({ type: 'Text', text: /best 5 · 2 swaps this session/ })).toBeDefined()
+    await band.press({ key: 'hide' })
+    expect(await band.find({ key: 'show' })).toBeDefined()
+    await band.press({ key: 'show' })
+    await band.unmount()
+  }
 
   const r = await $.command.run({ command: 'wtf', args: '' } as never)
   expect(JSON.stringify(r)).toContain('Kid mode: 🍪 Clean for 0 · 2 swaps. Best streak 5.')

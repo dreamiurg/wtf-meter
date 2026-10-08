@@ -51,10 +51,7 @@ let ticker: { cancel: () => void } | undefined // redraws the countdown while a 
 async function showStatus($: EngineInterface) {
   if (await jarMode($)) return $.ui.status(jarStatus(await read($, jarCents)))
   const list = await read($, msgs)
-  if (cfg.mode === 'kid') {
-    const swaps = list.map(m => m.swaps)
-    return $.ui.status(streak(swaps).total ? kidStatus(swaps) : undefined)
-  }
+  if (cfg.mode === 'kid') return $.ui.status(kidStatus(streak(list.map(m => m.swaps))))
   $.ui.status(list.length ? meterStatus(list) : undefined)
 }
 
@@ -226,7 +223,10 @@ export const register: Register = (on, options) => {
     if (cfg.mode === 'kid') {
       const run = streak(list.slice(0, -1).map(m => m.swaps)).now
       const kid = msg.swaps ? kidVersion(e.text) : null
-      if (kid && run >= STREAK_TOAST) $.ui.toast(`Streak over at ${run} clean messages. ${kid.swap[0]!.toUpperCase()}${kid.swap.slice(1)}`)
+      if (kid && run >= STREAK_TOAST) {
+        $.ui.toast(`Streak over at ${run} clean messages. ${kid.swap[0]!.toUpperCase()}${kid.swap.slice(1)}`)
+        await update($, isHidden, () => false) // a broken streak brings a hidden strip back
+      }
       await showStatus($)
       return next(e)
     }
@@ -444,8 +444,8 @@ export const register: Register = (on, options) => {
     if (await jarMode($)) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${channelLabel(cfg)}.` : cfg.channel ? `. Not posting to ${channelLabel(cfg)} from this account.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
     if (cfg.mode === 'kid') {
-      const swaps = list.map(m => m.swaps)
-      return { text: streak(swaps).total ? `Kid mode: ${kidStatus(swaps)}. Best streak ${streak(swaps).best}.` : 'Kid mode: nothing swapped yet.' }
+      const k = streak(list.map(m => m.swaps))
+      return { text: k.total ? `Kid mode: ${kidStatus(k)}. Best streak ${k.best}.` : 'Kid mode: nothing swapped yet.' }
     }
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')

@@ -96,7 +96,7 @@ For cleaning up your language before the kids pick it up. Set `mode` to `kid`, a
 
 | Swear | English | Deutsch | Polski | Українська | Русский |
 | --- | --- | --- | --- | --- | --- |
-| medium (`wtf`, `verdammt`, `сука`) | biscuits! | Potzblitz! | o rany! | отакої! | ёлки-палки! |
+| medium (`wtf`, `verdammt`, `сука`) | biscuits! | Potzblitz! | – | отакої! | ёлки-палки! |
 | strong (the f-word, `kurwa`, `Scheiße`, mat) | boogerbeans! | ach du dickes Ei! | o kurka wodna! | ой лишенько! | ёшкин кот! |
 | a whole message scoring 6+ | boogerbeans on toast! | ach du grüne Neune! | o matko i córko! | матінко рідна! | батюшки мои! |
 

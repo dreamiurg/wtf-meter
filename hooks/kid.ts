@@ -4,7 +4,8 @@
 import { score } from './lexicon'
 import type { Hit } from './lexicon'
 
-// Per language: [weight 2, weight 3, a whole message scoring BIG or more]
+// Per language: [weight 2, weight 3, a whole message scoring BIG or more].
+// Polish has no weight-2 words in the lexicon yet, so 'o rany' waits for one.
 const SWAPS = {
   en: ['biscuits', 'boogerbeans', 'boogerbeans on toast'],
   de: ['Potzblitz', 'ach du dickes Ei', 'ach du grüne Neune'],
@@ -25,7 +26,8 @@ const capped = (s: string, like: string) =>
  * Weight 1 (damn, kurde, блин) is what parents already say instead, so it stays.
  */
 export function kidVersion(text: string): { markdown: string; said: string[]; swap: string } | null {
-  const hits = score(text).hits.filter(h => h.w >= 2)
+  const s = score(text)
+  const hits = s.hits.filter(h => h.w >= 2)
   if (!hits.length) return null
   // ponytail: a swear inside a code span shows its ** literally; fine for chat prose
   let markdown = ''
@@ -36,8 +38,8 @@ export function kidVersion(text: string): { markdown: string; said: string[]; sw
   }
   markdown += text.slice(at)
   const worst = [...hits].sort((a, b) => b.w - a.w)[0]!
-  const total = hits.reduce((s, h) => s + h.w, 0)
-  const swap = total >= BIG ? SWAPS[langOf(worst, text)][2] : swapOf(worst, text)
+  // the big one counts mild words too, so it lands where the meter's stamp turns red
+  const swap = s.total >= BIG ? SWAPS[langOf(worst, text)][2] : swapOf(worst, text)
   return { markdown, said: hits.map(h => h.word), swap: `${swap}!` }
 }
 
@@ -49,10 +51,9 @@ export function streak(swaps: readonly number[]) {
     run = s ? 0 : run + 1
     best = Math.max(best, run)
   }
-  return { now: run, best, total: swaps.reduce((a, b) => a + b, 0) }
+  return { now: run, best, total: swaps.reduce((a, b) => a + (b ?? 0), 0) }
 }
 
-export const kidStatus = (swaps: readonly number[]) => {
-  const k = streak(swaps)
-  return `🍪 Clean for ${k.now} · ${k.total} swap${k.total === 1 ? '' : 's'}`
-}
+/** Status text, or undefined before the first swap. */
+export const kidStatus = (k: ReturnType<typeof streak>) =>
+  k.total ? `🍪 Clean for ${k.now} · ${k.total} swap${k.total === 1 ? '' : 's'}` : undefined
