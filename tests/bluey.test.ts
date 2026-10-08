@@ -60,8 +60,9 @@ test('Bluey mode redraws the message, draws the streak and toasts a broken strea
   expect(toasts).toEqual(['Streak over at 5 clean messages. O kurka wodna!'])
   expect(await pre.find({ key: 'hide' })).toBeDefined() // a broken streak brings the strip back
   await pre.unmount()
+  for (const t of ['f', 'g', 'h', 'i']) await say(t)
   await say('wtf')
-  expect(toasts).toHaveLength(1) // a 0-message streak broke: no toast
+  expect(toasts).toHaveLength(1) // a 4-message streak broke: under the threshold, no toast
   expect(statuses.at(-1)).toBe('🍪 Clean for 0 · 3 swaps')
 
   const props = { text: 'wtf, run it', origin: { kind: 'composer' }, isExpanded: false } as never
