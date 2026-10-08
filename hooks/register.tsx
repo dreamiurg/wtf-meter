@@ -3,7 +3,9 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Msg, Pending } from '../types'
 import { channelIdIn, channelLabel, channelLink, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
-import { LEVELS, levelOf, score, stampColor } from './lexicon'
+import { blueyStatus, blueyVersion, cap, streak, swappable } from './bluey'
+import { LEVELS, levelOf, score, stampColor, worstHit } from './lexicon'
+import type { Hit } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
 const isHidden = atom({ plugin: 'wtf-meter', key: 'isHidden' } as const, false)
@@ -16,6 +18,9 @@ const tick = atom({ plugin: 'wtf-meter', key: 'tick' } as const, 0)
 const JAR_KEY = 'jarCents' // $.store: the jar outlives the session, like a real one
 const POST_DELAY_MS = 2 * 60 * 1000
 const JAR_COLOR = '#c39a1c'
+const BLUEY_COLOR = '#3f7fc4'
+const SWAP_COLOR = '#d9963f'
+const STREAK_TOAST = 5 // a clean run this long gets a toast when it breaks
 
 // Only what the person typed counts: not task notifications, peers, plugins.
 const NOT_TYPED = new Set([
@@ -25,8 +30,7 @@ const NOT_TYPED = new Set([
 ])
 const isTyped = (origin: { kind: string } | undefined) => !NOT_TYPED.has(origin?.kind ?? '')
 
-const worstOf = (hits: { word: string; w: number }[]) =>
-  hits.length ? [...hits].sort((a, b) => b.w - a.w)[0]!.word.toLowerCase() : null
+const worstOf = (hits: readonly Hit[]) => worstHit(hits)?.word.toLowerCase() ?? null
 
 function meterStatus(list: readonly Msg[]) {
   const scores = list.map(m => m.score)
@@ -47,6 +51,7 @@ let ticker: { cancel: () => void } | undefined // redraws the countdown while a 
 async function showStatus($: EngineInterface) {
   if (await jarMode($)) return $.ui.status(jarStatus(await read($, jarCents)))
   const list = await read($, msgs)
+  if (cfg.mode === 'bluey') return $.ui.status(blueyStatus(streak(list.map(m => m.swaps))))
   $.ui.status(list.length ? meterStatus(list) : undefined)
 }
 
@@ -199,7 +204,7 @@ export const register: Register = (on, options) => {
     if (!isTyped(e.origin)) return next(e)
     const s = score(e.text)
 
-    const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits) }
+    const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits), swaps: swappable(s.hits).length }
     const list = await update($, msgs, l => [...l, msg].slice(-500))
 
     if (await jarMode($)) {
@@ -211,6 +216,18 @@ export const register: Register = (on, options) => {
         $.ui.toast(`🪙 +${money(cents)} in the jar (${money(total)}).${full ? ' 🍺 Jar full: beer run!' : ''}`)
       }
       if (await canPost($)) await track($, cents ? e.text : null, cents, levelOf(list.map(m => m.score)).avg)
+      await showStatus($)
+      return next(e)
+    }
+
+    if (cfg.mode === 'bluey') {
+      // Only a streak the strip was showing, i.e. after a first swap, can break.
+      const prev = streak(list.slice(0, -1).map(m => m.swaps))
+      const clean = msg.swaps && prev.total && prev.now >= STREAK_TOAST ? blueyVersion(e.text) : null
+      if (clean) {
+        $.ui.toast(`Streak over at ${prev.now} clean messages. ${cap(clean.swap)}`)
+        await update($, isHidden, () => false) // a broken streak brings a hidden strip back
+      }
       await showStatus($)
       return next(e)
     }
@@ -227,9 +244,24 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e)) // a counter must never block a prompt
 
   // Stamp each of your messages that scored: a colored pill under the bubble
-  // on the desktop, a text line where only text draws.
+  // on the desktop, a text line where only text draws. Bluey mode redraws it instead.
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     if (!isTyped(e.props.origin)) return next(e)
+    // Bluey mode draws the child-friendly version; Claude still got what was typed.
+    if (cfg.mode === 'bluey') {
+      const clean = blueyVersion(e.props.text)
+      if (!clean) return next(e)
+      if (e.surface !== 'desktop') {
+        return next({ ...e, props: { ...e.props, text: `${e.props.text}\n[bluey · ${clean.said.join(', ')} → ${clean.swap}]` } })
+      }
+      const { Box, Markdown, Text } = $.ui.resolve(e)
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Markdown text={clean.markdown} />
+          <Text dimColor>you typed: {clean.said.join(', ')}</Text>
+        </Box>
+      )
+    }
     const s = score(e.props.text)
     if (!s.total) return next(e)
     const isJar = await jarMode($)
@@ -252,19 +284,20 @@ export const register: Register = (on, options) => {
     )
   })
 
-  // The strip above the prompt: heat bars (meter) or the jar (jar).
+  // The strip above the prompt: heat bars (meter), the jar (jar) or the clean streak (bluey).
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const t = $.ui.resolve(e)
     const { Box, Text, Button, Link } = t
     const hide = <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
+    const show = (label: string) => <Button key="show" plain label={`${label} ▸`} onPress={() => update($, isHidden, () => false)} />
 
     if (await jarMode($)) {
       const cents = await read($, jarCents)
       const waiting = await read($, pending)
       if (!cents && !waiting) return next(e)
       if (await read($, isHidden)) {
-        return <Button key="show" plain label={`🫙 ${money(cents)} ▸`} onPress={() => update($, isHidden, () => false)} />
+        return show(`🫙 ${money(cents)}`)
       }
       const fill = (cents % JAR_CENTS) / JAR_CENTS
       const amount = <Text bold color={JAR_COLOR}>🫙 {money(cents)}</Text>
@@ -329,13 +362,33 @@ export const register: Register = (on, options) => {
     }
 
     const list = await read($, msgs)
+    if (cfg.mode === 'bluey') {
+      const k = streak(list.map(m => m.swaps))
+      if (!k.total) return next(e)
+      const head = `🍪 Clean for ${k.now}`
+      if (await read($, isHidden)) {
+        return show(head)
+      }
+      // the terminal keeps 68 cells for the head, the tail and Hide
+      const dots = e.surface === 'terminal' ? Math.max(4, Math.min(12, (e.props.bodyColumns ?? 80) - 68)) : 12
+      return (
+        <Box flexDirection="row" alignItems="center" gap={1}>
+          <Text bold color={BLUEY_COLOR}>{head} message{k.now === 1 ? '' : 's'}</Text>
+          <Box flexDirection="row">
+            {list.slice(-dots).map(m => <Text color={m.swaps ? SWAP_COLOR : BLUEY_COLOR}>●</Text>)}
+          </Box>
+          <Text dimColor>best {k.best} · {k.total} swap{k.total === 1 ? '' : 's'} this session</Text>
+          {hide}
+        </Box>
+      )
+    }
     if (!list.length) return next(e)
     const scores = list.map(m => m.score)
     const { level, avg } = levelOf(scores)
 
     // Hidden collapses to one chip that opens the strip again.
     if (await read($, isHidden)) {
-      return <Button key="show" plain label={`${level.dot} ${level.name} ▸`} onPress={() => update($, isHidden, () => false)} />
+      return show(`${level.dot} ${level.name}`)
     }
     const before = levelOf(scores.slice(0, -1)).avg
     const trend = avg > before ? 'rising' : avg < before ? 'cooling' : 'steady'
@@ -394,6 +447,10 @@ export const register: Register = (on, options) => {
     await update($, isHidden, () => false)
     if (await jarMode($)) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${channelLabel(cfg)}.` : cfg.channel ? `. Not posting to ${channelLabel(cfg)} from this account.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
+    if (cfg.mode === 'bluey') {
+      const k = streak(list.map(m => m.swaps))
+      return { text: k.total ? `Bluey mode: ${blueyStatus(k)}. Best streak ${k.best}.` : 'Bluey mode: nothing swapped yet.' }
+    }
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')
     return { text: `WTF meter: ${meterStatus(list)}${words ? `. Worst words: ${words}` : ''}` }
