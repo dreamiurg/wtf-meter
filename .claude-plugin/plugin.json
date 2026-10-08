@@ -1,6 +1,6 @@
 {
   "name": "wtf-meter",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Counts the swearing in your prompts (English, German, Polish, Russian, Ukrainian): a heat meter, a swear jar, or Bluey-style child-friendly swaps",
   "author": {
     "name": "dreamiurg"
