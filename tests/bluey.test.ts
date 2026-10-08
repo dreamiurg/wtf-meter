@@ -19,7 +19,7 @@ test('swaps by weight in the message language, leaving mild words alone', async 
   const swaps: [string, string][] = [
     ['cunt', 'boogerbeans!'], ['asshole', 'biscuits!'], ['f***', 'boogerbeans!'], ['п***ц', 'ой лишенько!'],
     ['хуйня', 'ой лишенько!'], ['сука', 'отакої!'], ['сука, это', 'ёлки-палки!'], ['пиздец, это', 'ёшкин кот!'],
-    ['Scheiße, Scheiße', 'ach du grüne Neune!'], ['бля, бля', 'матінко рідна!'], ['chuj', 'o kurka wodna!'],
+    ['Scheiße, Scheiße', 'ach du grüne Neune!'], ['бля, бля', 'матінко рідна!'], ['chuj', 'o kurka wodna!'], ['ёбаный', 'ёшкин кот!'],
   ]
   for (const [text, swap] of swaps) expect(blueyVersion(text)?.swap).toBe(swap)
 })
