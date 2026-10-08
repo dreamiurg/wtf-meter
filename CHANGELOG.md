@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/dreamiurg/wtf-meter/compare/wtf-meter-v0.7.0...wtf-meter-v0.8.0) (2026-10-08)
+
+
+### Features
+
+* Bluey mode swaps each swear for a child-friendly one ([#3](https://github.com/dreamiurg/wtf-meter/issues/3)) ([3dbea78](https://github.com/dreamiurg/wtf-meter/commit/3dbea785027f0e9f678cc97d97b7b28adb7a082b))
+
 ## [0.7.0](https://github.com/dreamiurg/wtf-meter/compare/wtf-meter-v0.6.0...wtf-meter-v0.7.0) (2026-10-07)
 
 
