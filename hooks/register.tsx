@@ -5,6 +5,7 @@ import type { Msg, Pending } from '../types'
 import { channelIdIn, channelLabel, channelLink, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
 import { blueyStatus, blueyVersion, cap, streak, swappable } from './bluey'
 import { LEVELS, levelOf, score, stampColor, worstHit } from './lexicon'
+import type { Hit } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
 const isHidden = atom({ plugin: 'wtf-meter', key: 'isHidden' } as const, false)
@@ -29,7 +30,7 @@ const NOT_TYPED = new Set([
 ])
 const isTyped = (origin: { kind: string } | undefined) => !NOT_TYPED.has(origin?.kind ?? '')
 
-const worstOf = (hits: Parameters<typeof worstHit>[0]) => worstHit(hits)?.word.toLowerCase() ?? null
+const worstOf = (hits: readonly Hit[]) => worstHit(hits)?.word.toLowerCase() ?? null
 
 function meterStatus(list: readonly Msg[]) {
   const scores = list.map(m => m.score)
@@ -220,10 +221,11 @@ export const register: Register = (on, options) => {
     }
 
     if (cfg.mode === 'bluey') {
-      const run = streak(list.slice(0, -1).map(m => m.swaps)).now
-      const clean = msg.swaps && run >= STREAK_TOAST ? blueyVersion(e.text) : null
+      // Only a streak the strip was showing, i.e. after a first swap, can break.
+      const prev = streak(list.slice(0, -1).map(m => m.swaps))
+      const clean = msg.swaps && prev.total && prev.now >= STREAK_TOAST ? blueyVersion(e.text) : null
       if (clean) {
-        $.ui.toast(`Streak over at ${run} clean messages. ${cap(clean.swap)}`)
+        $.ui.toast(`Streak over at ${prev.now} clean messages. ${cap(clean.swap)}`)
         await update($, isHidden, () => false) // a broken streak brings a hidden strip back
       }
       await showStatus($)
@@ -288,13 +290,14 @@ export const register: Register = (on, options) => {
     const t = $.ui.resolve(e)
     const { Box, Text, Button, Link } = t
     const hide = <Button key="hide" label="Hide" onPress={() => update($, isHidden, () => true)} />
+    const show = (label: string) => <Button key="show" plain label={`${label} ▸`} onPress={() => update($, isHidden, () => false)} />
 
     if (await jarMode($)) {
       const cents = await read($, jarCents)
       const waiting = await read($, pending)
       if (!cents && !waiting) return next(e)
       if (await read($, isHidden)) {
-        return <Button key="show" plain label={`🫙 ${money(cents)} ▸`} onPress={() => update($, isHidden, () => false)} />
+        return show(`🫙 ${money(cents)}`)
       }
       const fill = (cents % JAR_CENTS) / JAR_CENTS
       const amount = <Text bold color={JAR_COLOR}>🫙 {money(cents)}</Text>
@@ -364,7 +367,7 @@ export const register: Register = (on, options) => {
       if (!k.total) return next(e)
       const head = `🍪 Clean for ${k.now}`
       if (await read($, isHidden)) {
-        return <Button key="show" plain label={`${head} ▸`} onPress={() => update($, isHidden, () => false)} />
+        return show(head)
       }
       return (
         <Box flexDirection="row" alignItems="center" gap={1}>
@@ -383,7 +386,7 @@ export const register: Register = (on, options) => {
 
     // Hidden collapses to one chip that opens the strip again.
     if (await read($, isHidden)) {
-      return <Button key="show" plain label={`${level.dot} ${level.name} ▸`} onPress={() => update($, isHidden, () => false)} />
+      return show(`${level.dot} ${level.name}`)
     }
     const before = levelOf(scores.slice(0, -1)).avg
     const trend = avg > before ? 'rising' : avg < before ? 'cooling' : 'steady'

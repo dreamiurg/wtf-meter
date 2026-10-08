@@ -5,7 +5,7 @@ const L = '(?<![\\p{L}\\p{N}*])'
 const E = '(?![\\p{L}])'
 
 // Russian and Ukrainian share the mat roots, so they share 'cyr'.
-export type Lang = 'en' | 'de' | 'pl' | 'cyr'
+type Lang = 'en' | 'de' | 'pl' | 'cyr'
 
 const LEX: readonly [number, Lang, string][] = [
   [3, 'en', L + '\\p{L}*fuck\\p{L}*'],
@@ -28,6 +28,7 @@ const LEX: readonly [number, Lang, string][] = [
   // PL
   [3, 'pl', L + '(?:kurw\\p{L}*|\\p{L}*pierdol\\p{L}*|(?:wy|za|od|roz|s)?jeb(?:a|i|ie|n|ło|ać)\\p{L}*|chuj\\p{L}*)'],
   [1, 'pl', L + '(?:kurde|kurczę|cholera(?:\\s+jasna)?)' + E],
+  // RU/UK, mild
   [1, 'cyr', L + '(?:блин|хр[еі]н\\p{L}*|ч[её]рт(?:и|ов|овски)?|дідьк\\p{L}*|трясця|холера|срак\\p{L}*|лайн[оа])' + E],
 ]
 const RX = LEX.map(([w, lang, re]) => ({ w, lang, rx: new RegExp(re, 'giu') }))

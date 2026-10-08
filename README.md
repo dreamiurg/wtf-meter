@@ -102,7 +102,7 @@ For cleaning up your language before the kids pick it up. Set `mode` to `bluey`,
 
 Mild words (`damn`, `kurde`, `блин`) stay as they are: they're what parents already say instead. Russian and Ukrainian share the mat roots, so a message reads as Russian only when it has ы, э, ъ or ё.
 
-Instead of a heat level, the strip counts your clean streak: messages since your last swap, your best run this session, and the last few messages as dots. Break a streak of 5 or more and you get a toast. Bluey mode never posts to Slack.
+From your first swap on, the strip counts your clean streak instead of a heat level (status line: `🍪 Clean for 5 · 1 swap`): messages since your last swap, your best run this session, and the last few messages as dots. Break a streak of 5 or more and you get a toast. Bluey mode never posts to Slack.
 
 ```json
 "pluginConfigs": {

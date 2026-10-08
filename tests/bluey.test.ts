@@ -15,6 +15,13 @@ test('swaps by weight in the message language, leaving mild words alone', async 
   // weight 1 is what parents already say instead
   expect(blueyVersion('damn, hell, блин, kurde')).toBeNull()
   expect(blueyVersion('fucking hell, wtf')?.said).toEqual(['fucking', 'wtf'])
+  // every lexicon row carries the right language
+  const swaps: [string, string][] = [
+    ['cunt', 'boogerbeans!'], ['asshole', 'biscuits!'], ['f***', 'boogerbeans!'], ['п***ц', 'ой лишенько!'],
+    ['хуйня', 'ой лишенько!'], ['сука', 'отакої!'], ['сука, это', 'ёлки-палки!'], ['пиздец, это', 'ёшкин кот!'],
+    ['Scheiße, Scheiße', 'ach du grüne Neune!'], ['бля, бля', 'матінко рідна!'], ['chuj', 'o kurka wodna!'],
+  ]
+  for (const [text, swap] of swaps) expect(blueyVersion(text)?.swap).toBe(swap)
 })
 
 test('a message scoring 6 or more gets the full phrase', async () => {
@@ -39,9 +46,10 @@ test('Bluey mode redraws the message, draws the streak and toasts a broken strea
   on('ui.render', (_$, e) => ({ type: 'Text', props: {}, children: [String((e.props as { text?: string }).text ?? 'engine')] }) as never)
   const say = (text: string) => $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
 
-  await say('damn, fine')
+  for (const t of ['damn, fine', 'v', 'w', 'x', 'y']) await say(t)
   expect(statuses.at(-1)).toBeUndefined() // nothing swapped yet
   await say('wtf')
+  expect(toasts).toEqual([]) // no streak was on screen, so none broke
   const strip = { plugin: 'wtf-meter', component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never } as const
   const pre = await $.ui.mount({ ...strip, surface: 'terminal' })
   await pre.press({ key: 'hide' })
