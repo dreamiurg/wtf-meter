@@ -373,7 +373,7 @@ export const register: Register = (on, options) => {
         <Box flexDirection="row" alignItems="center" gap={1}>
           <Text bold color={BLUEY_COLOR}>{head} message{k.now === 1 ? '' : 's'}</Text>
           <Box flexDirection="row">
-            {list.slice(-Math.max(4, Math.min(12, (e.props.bodyColumns ?? 80) - 64))).map(m => <Text color={m.swaps ? SWAP_COLOR : BLUEY_COLOR}>●</Text>)}
+            {list.slice(-(e.surface === 'terminal' ? Math.max(4, Math.min(12, (e.props.bodyColumns ?? 80) - 68)) : 12)).map(m => <Text color={m.swaps ? SWAP_COLOR : BLUEY_COLOR}>●</Text>)}
           </Box>
           <Text dimColor>best {k.best} · {k.total} swap{k.total === 1 ? '' : 's'} this session</Text>
           {hide}

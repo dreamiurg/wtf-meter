@@ -60,7 +60,9 @@ test('Bluey mode redraws the message, draws the streak and toasts a broken strea
   expect(toasts).toEqual(['Streak over at 5 clean messages. O kurka wodna!'])
   expect(await pre.find({ key: 'hide' })).toBeDefined() // a broken streak brings the strip back
   await pre.unmount()
-  expect(statuses.at(-1)).toBe('🍪 Clean for 0 · 2 swaps')
+  await say('wtf')
+  expect(toasts).toHaveLength(1) // a 0-message streak broke: no toast
+  expect(statuses.at(-1)).toBe('🍪 Clean for 0 · 3 swaps')
 
   const props = { text: 'wtf, run it', origin: { kind: 'composer' }, isExpanded: false } as never
   const term = await $.ui.mount({ plugin: 'wtf-meter', surface: 'terminal', component: 'UserMessage', props })
@@ -74,7 +76,7 @@ test('Bluey mode redraws the message, draws the streak and toasts a broken strea
   for (const surface of ['terminal', 'desktop'] as const) {
     const band = await $.ui.mount({ ...strip, surface })
     expect(await band.find({ type: 'Text', text: /Clean for 0 messages/ })).toBeDefined()
-    expect(await band.find({ type: 'Text', text: /best 5 · 2 swaps this session/ })).toBeDefined()
+    expect(await band.find({ type: 'Text', text: /best 5 · 3 swaps this session/ })).toBeDefined()
     await band.press({ key: 'hide' })
     expect(await band.find({ key: 'show' })).toBeDefined()
     await band.press({ key: 'show' })
@@ -82,5 +84,5 @@ test('Bluey mode redraws the message, draws the streak and toasts a broken strea
   }
 
   const r = await $.command.run({ command: 'wtf', args: '' } as never)
-  expect(JSON.stringify(r)).toContain('Bluey mode: 🍪 Clean for 0 · 2 swaps. Best streak 5.')
+  expect(JSON.stringify(r)).toContain('Bluey mode: 🍪 Clean for 0 · 3 swaps. Best streak 5.')
 })
