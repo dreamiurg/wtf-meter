@@ -1,4 +1,4 @@
-// Kid mode: every swear gets a child-friendly swap, in the language it was said in.
+// Bluey mode: every swear gets a child-friendly swap, in the language it was said in.
 // Display only: Claude still reads what was typed.
 
 import { score } from './lexicon'
@@ -25,7 +25,7 @@ const capped = (s: string, like: string) =>
  * The child-friendly version of a message, or null when it has nothing to swap.
  * Weight 1 (damn, kurde, блин) is what parents already say instead, so it stays.
  */
-export function kidVersion(text: string): { markdown: string; said: string[]; swap: string } | null {
+export function blueyVersion(text: string): { markdown: string; said: string[]; swap: string } | null {
   const s = score(text)
   const hits = s.hits.filter(h => h.w >= 2)
   if (!hits.length) return null
@@ -55,5 +55,5 @@ export function streak(swaps: readonly number[]) {
 }
 
 /** Status text, or undefined before the first swap. */
-export const kidStatus = (k: ReturnType<typeof streak>) =>
+export const blueyStatus = (k: ReturnType<typeof streak>) =>
   k.total ? `🍪 Clean for ${k.now} · ${k.total} swap${k.total === 1 ? '' : 's'}` : undefined

@@ -18,7 +18,7 @@ The code review is a chat with Claude now, and the WTFs are typed. So this is a 
 - A toast pops when the session changes level
 - `/wtf` prints the tally
 - Or switch to [swear jar mode](#swear-jar-mode) and let the team see who is paying in
-- Or [kid mode](#kid-mode): every swear gets a child-friendly swap, so you can practice before the kids hear it
+- Or [Bluey mode](#bluey-mode): every swear gets a child-friendly swap, so you can practice before the kids hear it
 
 Works in the Claude Code terminal and the Code tab of the Claude desktop app. Nothing leaves your machine unless you turn on Slack posting, and even then your words don't.
 
@@ -90,9 +90,9 @@ Two accounts on one machine (say, personal and work)? Add `"jarOnlyFor": "@compa
 
 `slackChannel` takes the channel name, optionally followed by its ID (`"swear-jar C0123ABCD"`, the ID from the channel's "Copy link"). Add the ID if the name matches more than one channel. Messages always show the name. No Slack connected: the jar stays local and a toast says so.
 
-## Kid mode
+## Bluey mode
 
-For cleaning up your language before the kids pick it up. Set `mode` to `kid`, and each sweary message is drawn as its child-friendly version: you typed `wtf, run the tests`, the chat shows **biscuits**, run the tests, with `you typed: wtf` underneath. In the terminal it's one line: `[kid · wtf → biscuits!]`.
+For cleaning up your language before the kids pick it up. Set `mode` to `bluey`, and each sweary message is drawn as its child-friendly version: you typed `wtf, run the tests`, the chat shows **biscuits**, run the tests, with `you typed: wtf` underneath. In the terminal it's one line: `[bluey · wtf → biscuits!]`.
 
 | Swear | English | Deutsch | Polski | Українська | Русский |
 | --- | --- | --- | --- | --- | --- |
@@ -102,11 +102,11 @@ For cleaning up your language before the kids pick it up. Set `mode` to `kid`, a
 
 Mild words (`damn`, `kurde`, `блин`) stay as they are: they're what parents already say instead. Russian and Ukrainian share the mat roots, so a message reads as Russian only when it has ы, э, ъ or ё.
 
-Instead of a heat level, the strip counts your clean streak: messages since your last swap, your best run this session, and the last few messages as dots. Break a streak of 5 or more and you get a toast. As in the other modes, this only changes how your message is drawn: Claude still reads exactly what you typed. Kid mode never posts to Slack.
+Instead of a heat level, the strip counts your clean streak: messages since your last swap, your best run this session, and the last few messages as dots. Break a streak of 5 or more and you get a toast. As in the other modes, this only changes how your message is drawn: Claude still reads exactly what you typed. Bluey mode never posts to Slack.
 
 ```json
 "pluginConfigs": {
-  "wtf-meter@wtf-meter": { "options": { "mode": "kid" } }
+  "wtf-meter@wtf-meter": { "options": { "mode": "bluey" } }
 }
 ```
 
@@ -156,7 +156,7 @@ Releases are automatic: once CI passes on `main`, any `feat:` or `fix:` commits 
 
 ## Credits
 
-- Kid mode's English swaps come from *Bluey* ("Biscuits! Boogerbeans on toast!"), by way of a friend who swears like that now. Not affiliated with the show.
+- Bluey mode's English swaps come from *Bluey* ("Biscuits! Boogerbeans on toast!"), by way of a friend who swears like that now. Not affiliated with the show.
 - The idea: Thom Holwerda's [WTFs/minute](https://www.osnews.com/story/19557/Fools) cartoon, OSNews, 2008. The drawings here are new homages generated with an image model, not copies; the prompts are in [docs/image-prompts.md](docs/image-prompts.md).
 
 ## License

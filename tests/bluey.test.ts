@@ -1,27 +1,27 @@
 import { expect, test } from 'claude-code/testing'
 
-import { kidVersion, streak } from '../hooks/kid'
+import { blueyVersion, streak } from '../hooks/bluey'
 
-const KID = { mode: 'kid' }
+const BLUEY = { mode: 'bluey' }
 
 test('swaps by weight in the message language, leaving mild words alone', async () => {
-  expect(kidVersion('wtf, fix it')).toEqual({ markdown: '**biscuits**, fix it', said: ['wtf'], swap: 'biscuits!' })
-  expect(kidVersion('kurwa. why')?.markdown).toBe('**o kurka wodna**. why')
+  expect(blueyVersion('wtf, fix it')).toEqual({ markdown: '**biscuits**, fix it', said: ['wtf'], swap: 'biscuits!' })
+  expect(blueyVersion('kurwa. why')?.markdown).toBe('**o kurka wodna**. why')
   // capitalized stays capitalized; 3 + 2 = 5 is not yet the big one
-  expect(kidVersion('Scheiße, verdammt')).toEqual({ markdown: '**Ach du dickes Ei**, **Potzblitz**', said: ['Scheiße', 'verdammt'], swap: 'ach du dickes Ei!' })
+  expect(blueyVersion('Scheiße, verdammt')).toEqual({ markdown: '**Ach du dickes Ei**, **Potzblitz**', said: ['Scheiße', 'verdammt'], swap: 'ach du dickes Ei!' })
   // the shared mat roots read as Russian only when Russian-only letters show up
-  expect(kidVersion('що це, бля')?.swap).toBe('ой лишенько!')
-  expect(kidVersion('что это, бля')?.swap).toBe('ёшкин кот!')
+  expect(blueyVersion('що це, бля')?.swap).toBe('ой лишенько!')
+  expect(blueyVersion('что это, бля')?.swap).toBe('ёшкин кот!')
   // weight 1 is what parents already say instead
-  expect(kidVersion('damn, hell, блин, kurde')).toBeNull()
-  expect(kidVersion('fucking hell, wtf')?.said).toEqual(['fucking', 'wtf'])
+  expect(blueyVersion('damn, hell, блин, kurde')).toBeNull()
+  expect(blueyVersion('fucking hell, wtf')?.said).toEqual(['fucking', 'wtf'])
 })
 
 test('a message scoring 6 or more gets the full phrase', async () => {
-  expect(kidVersion('fucking shit')?.swap).toBe('boogerbeans on toast!')
+  expect(blueyVersion('fucking shit')?.swap).toBe('boogerbeans on toast!')
   // mild words count toward it, like the meter's red stamp
-  expect(kidVersion('fucking hell, wtf')?.swap).toBe('boogerbeans on toast!')
-  expect(kidVersion('kurwa, ja pierdolę')?.swap).toBe('o matko i córko!')
+  expect(blueyVersion('fucking hell, wtf')?.swap).toBe('boogerbeans on toast!')
+  expect(blueyVersion('kurwa, ja pierdolę')?.swap).toBe('o matko i córko!')
 })
 
 test('streak counts clean messages since the last swap', async () => {
@@ -30,7 +30,7 @@ test('streak counts clean messages since the last swap', async () => {
   expect(streak([1, 0, 0, 0])).toEqual({ now: 3, best: 3, total: 1 })
 })
 
-test('kid mode rewrites the stamp, draws the streak and toasts a broken streak', { options: KID }, async ($, on) => {
+test('Bluey mode rewrites the stamp, draws the streak and toasts a broken streak', { options: BLUEY }, async ($, on) => {
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
   on('prompt.submit', (_$, e) => ({ text: e.text }))
@@ -51,7 +51,7 @@ test('kid mode rewrites the stamp, draws the streak and toasts a broken streak',
 
   const props = { text: 'wtf, run it', origin: { kind: 'composer' }, isExpanded: false } as never
   const term = await $.ui.mount({ plugin: 'wtf-meter', surface: 'terminal', component: 'UserMessage', props })
-  expect(await term.find({ type: 'Text', text: 'wtf, run it\n[kid · wtf → biscuits!]' })).toBeDefined()
+  expect(await term.find({ type: 'Text', text: 'wtf, run it\n[bluey · wtf → biscuits!]' })).toBeDefined()
   await term.unmount()
   const desk = await $.ui.mount({ plugin: 'wtf-meter', surface: 'desktop', component: 'UserMessage', props })
   expect(await desk.find({ type: 'Markdown', text: '**biscuits**, run it' })).toBeDefined()
@@ -72,5 +72,5 @@ test('kid mode rewrites the stamp, draws the streak and toasts a broken streak',
   }
 
   const r = await $.command.run({ command: 'wtf', args: '' } as never)
-  expect(JSON.stringify(r)).toContain('Kid mode: 🍪 Clean for 0 · 2 swaps. Best streak 5.')
+  expect(JSON.stringify(r)).toContain('Bluey mode: 🍪 Clean for 0 · 2 swaps. Best streak 5.')
 })

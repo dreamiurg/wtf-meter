@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Msg, Pending } from '../types'
 import { channelIdIn, channelLabel, channelLink, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
-import { kidStatus, kidVersion, streak } from './kid'
+import { blueyStatus, blueyVersion, streak } from './bluey'
 import { LEVELS, levelOf, score, stampColor } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
@@ -17,7 +17,7 @@ const tick = atom({ plugin: 'wtf-meter', key: 'tick' } as const, 0)
 const JAR_KEY = 'jarCents' // $.store: the jar outlives the session, like a real one
 const POST_DELAY_MS = 2 * 60 * 1000
 const JAR_COLOR = '#c39a1c'
-const KID_COLOR = '#3f7fc4'
+const BLUEY_COLOR = '#3f7fc4'
 const SWAP_COLOR = '#d9963f'
 const STREAK_TOAST = 5 // a clean run this long gets a toast when it breaks
 
@@ -51,7 +51,7 @@ let ticker: { cancel: () => void } | undefined // redraws the countdown while a 
 async function showStatus($: EngineInterface) {
   if (await jarMode($)) return $.ui.status(jarStatus(await read($, jarCents)))
   const list = await read($, msgs)
-  if (cfg.mode === 'kid') return $.ui.status(kidStatus(streak(list.map(m => m.swaps))))
+  if (cfg.mode === 'bluey') return $.ui.status(blueyStatus(streak(list.map(m => m.swaps))))
   $.ui.status(list.length ? meterStatus(list) : undefined)
 }
 
@@ -220,11 +220,11 @@ export const register: Register = (on, options) => {
       return next(e)
     }
 
-    if (cfg.mode === 'kid') {
+    if (cfg.mode === 'bluey') {
       const run = streak(list.slice(0, -1).map(m => m.swaps)).now
-      const kid = msg.swaps ? kidVersion(e.text) : null
-      if (kid && run >= STREAK_TOAST) {
-        $.ui.toast(`Streak over at ${run} clean messages. ${kid.swap[0]!.toUpperCase()}${kid.swap.slice(1)}`)
+      const clean = msg.swaps ? blueyVersion(e.text) : null
+      if (clean && run >= STREAK_TOAST) {
+        $.ui.toast(`Streak over at ${run} clean messages. ${clean.swap[0]!.toUpperCase()}${clean.swap.slice(1)}`)
         await update($, isHidden, () => false) // a broken streak brings a hidden strip back
       }
       await showStatus($)
@@ -246,18 +246,18 @@ export const register: Register = (on, options) => {
   // on the desktop, a text line where only text draws.
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     if (!isTyped(e.props.origin)) return next(e)
-    // Kid mode draws the child-friendly version; Claude still got what was typed.
-    if (cfg.mode === 'kid') {
-      const kid = kidVersion(e.props.text)
-      if (!kid) return next(e)
+    // Bluey mode draws the child-friendly version; Claude still got what was typed.
+    if (cfg.mode === 'bluey') {
+      const clean = blueyVersion(e.props.text)
+      if (!clean) return next(e)
       if (e.surface !== 'desktop') {
-        return next({ ...e, props: { ...e.props, text: `${e.props.text}\n[kid · ${kid.said.join(', ')} → ${kid.swap}]` } })
+        return next({ ...e, props: { ...e.props, text: `${e.props.text}\n[bluey · ${clean.said.join(', ')} → ${clean.swap}]` } })
       }
       const { Box, Markdown, Text } = $.ui.resolve(e)
       return (
         <Box flexDirection="column" gap={1}>
-          <Markdown text={kid.markdown} />
-          <Text dimColor>you typed: {kid.said.join(', ')}</Text>
+          <Markdown text={clean.markdown} />
+          <Text dimColor>you typed: {clean.said.join(', ')}</Text>
         </Box>
       )
     }
@@ -360,7 +360,7 @@ export const register: Register = (on, options) => {
     }
 
     const list = await read($, msgs)
-    if (cfg.mode === 'kid') {
+    if (cfg.mode === 'bluey') {
       const k = streak(list.map(m => m.swaps))
       if (!k.total) return next(e)
       const head = `🍪 Clean for ${k.now}`
@@ -369,9 +369,9 @@ export const register: Register = (on, options) => {
       }
       return (
         <Box flexDirection="row" alignItems="center" gap={1}>
-          <Text bold color={KID_COLOR}>{head} message{k.now === 1 ? '' : 's'}</Text>
+          <Text bold color={BLUEY_COLOR}>{head} message{k.now === 1 ? '' : 's'}</Text>
           <Box flexDirection="row">
-            {list.slice(-12).map(m => <Text color={m.swaps ? SWAP_COLOR : KID_COLOR}>●</Text>)}
+            {list.slice(-12).map(m => <Text color={m.swaps ? SWAP_COLOR : BLUEY_COLOR}>●</Text>)}
           </Box>
           <Text dimColor>best {k.best} · {k.total} swap{k.total === 1 ? '' : 's'} this session</Text>
           {hide}
@@ -443,9 +443,9 @@ export const register: Register = (on, options) => {
     await update($, isHidden, () => false)
     if (await jarMode($)) return { text: `Swear jar: ${jarStatus(await read($, jarCents))}${(await canPost($)) ? `. Posting to ${channelLabel(cfg)}.` : cfg.channel ? `. Not posting to ${channelLabel(cfg)} from this account.` : '. Slack posting is off: no channel set.'}` }
     const list = await read($, msgs)
-    if (cfg.mode === 'kid') {
+    if (cfg.mode === 'bluey') {
       const k = streak(list.map(m => m.swaps))
-      return { text: k.total ? `Kid mode: ${kidStatus(k)}. Best streak ${k.best}.` : 'Kid mode: nothing swapped yet.' }
+      return { text: k.total ? `Bluey mode: ${blueyStatus(k)}. Best streak ${k.best}.` : 'Bluey mode: nothing swapped yet.' }
     }
     if (!list.length) return { text: 'WTF meter: nothing counted yet.' }
     const words = list.map(m => m.worst).filter(Boolean).join(', ')

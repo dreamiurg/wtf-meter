@@ -18,12 +18,12 @@
     "mode": {
       "type": "string",
       "title": "Mode",
-      "description": "meter: how heated this session is (cools down). jar: a swear jar that only fills, 25 cents per point. kid: shows a child-friendly swap for each swear (biscuits!) and counts your clean streak.",
+      "description": "meter: how heated this session is (cools down). jar: a swear jar that only fills, 25 cents per point. bluey: shows a child-friendly swap for each swear (biscuits!) and counts your clean streak.",
       "default": "meter",
       "options": [
         "meter",
         "jar",
-        "kid"
+        "bluey"
       ]
     },
     "jarOnlyFor": {
