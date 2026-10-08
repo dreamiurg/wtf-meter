@@ -1,5 +1,5 @@
-/** `swaps`: hits Bluey mode swaps (weight 2 and up). */
-export type Msg = { score: number; hits: number; worst: string | null; swaps: number }
+/** `swaps`: hits Bluey mode swaps (weight 2 and up); missing on messages counted before Bluey mode existed. */
+export type Msg = { score: number; hits: number; worst: string | null; swaps?: number }
 /**
  * One blow-up: the coins and messages since the person was last calm (local only).
  * `queued` once the session reached Heated; `preview` is the exact line that will post.

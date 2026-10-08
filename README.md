@@ -14,11 +14,11 @@ The code review is a chat with Claude now, and the WTFs are typed. So this is a 
 
 - Every message where you swore gets stamped: `[WTF +3 · бля]`
 - A strip above the prompt tracks the heat, one bar per message
-- The status line keeps score: `WTF 9 · 3.0/msg ▲ Meltdown`
+- The status line keeps score: `🔴 Meltdown · 9 WTFs ▲`
 - A toast pops when the session changes level
 - `/wtf` prints the tally
 - Or switch to [swear jar mode](#swear-jar-mode) and let the team see who is paying in
-- Or [Bluey mode](#bluey-mode): every swear gets a child-friendly swap, so you can practice before the kids hear it
+- Or [Bluey mode](#bluey-mode): each stronger swear gets a child-friendly swap, so you can practice before the kids hear it
 
 Works in the Claude Code terminal and the Code tab of the Claude desktop app. Nothing leaves your machine unless you turn on Slack posting, and even then your words don't.
 
@@ -92,7 +92,7 @@ Two accounts on one machine (say, personal and work)? Add `"jarOnlyFor": "@compa
 
 ## Bluey mode
 
-For cleaning up your language before the kids pick it up. Set `mode` to `bluey`, and each sweary message is drawn as its child-friendly version: you typed `wtf, run the tests`, the chat shows **biscuits**, run the tests, with `you typed: wtf` underneath. In the terminal it's one line: `[bluey · wtf → biscuits!]`.
+For cleaning up your language before the kids pick it up. Set `mode` to `bluey`, and each sweary message is drawn as its child-friendly version: you typed `wtf, run the tests`, the chat shows **biscuits**, run the tests, with `you typed: wtf` underneath. In the terminal your message stays as typed, with one line added under it: `[bluey · wtf → biscuits!]`.
 
 | Swear | English | Deutsch | Polski | Українська | Русский |
 | --- | --- | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ For cleaning up your language before the kids pick it up. Set `mode` to `bluey`,
 
 Mild words (`damn`, `kurde`, `блин`) stay as they are: they're what parents already say instead. Russian and Ukrainian share the mat roots, so a message reads as Russian only when it has ы, э, ъ or ё.
 
-Instead of a heat level, the strip counts your clean streak: messages since your last swap, your best run this session, and the last few messages as dots. Break a streak of 5 or more and you get a toast. As in the other modes, this only changes how your message is drawn: Claude still reads exactly what you typed. Bluey mode never posts to Slack.
+Instead of a heat level, the strip counts your clean streak: messages since your last swap, your best run this session, and the last few messages as dots. Break a streak of 5 or more and you get a toast. Bluey mode never posts to Slack.
 
 ```json
 "pluginConfigs": {
@@ -140,7 +140,7 @@ Only what you type counts. Background task notifications, scheduled prompts and 
 
 ## Privacy
 
-Meter scores live in the session's own state and go away with it; the jar total is kept in the plugin's local store. The stamps change only how your message is drawn: Claude still reads exactly what you typed. Slack posting is off until you set a channel, and a post never contains your words (see [swear jar mode](#swear-jar-mode)). Picking the topic is one small model call through your own Claude Code session.
+Meter scores live in the session's own state and go away with it; the jar total is kept in the plugin's local store. The stamps and Bluey swaps change only how your message is drawn: Claude still reads exactly what you typed. Slack posting is off until you set a channel, and a post never contains your words (see [swear jar mode](#swear-jar-mode)). Picking the topic is one small model call through your own Claude Code session.
 
 ## Develop
 

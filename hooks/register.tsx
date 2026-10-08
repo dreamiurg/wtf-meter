@@ -3,8 +3,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Msg, Pending } from '../types'
 import { channelIdIn, channelLabel, channelLink, cleanTopic, parseChannel, CENTS_PER_POINT, JAR_CENTS, money, postText, topicPrompt } from './jar'
-import { blueyStatus, blueyVersion, streak } from './bluey'
-import { LEVELS, levelOf, score, stampColor } from './lexicon'
+import { blueyStatus, blueyVersion, cap, streak, swappable } from './bluey'
+import { LEVELS, levelOf, score, stampColor, worstHit } from './lexicon'
 
 const msgs = atom({ plugin: 'wtf-meter', key: 'msgs' } as const, [])
 const isHidden = atom({ plugin: 'wtf-meter', key: 'isHidden' } as const, false)
@@ -29,8 +29,7 @@ const NOT_TYPED = new Set([
 ])
 const isTyped = (origin: { kind: string } | undefined) => !NOT_TYPED.has(origin?.kind ?? '')
 
-const worstOf = (hits: { word: string; w: number }[]) =>
-  hits.length ? [...hits].sort((a, b) => b.w - a.w)[0]!.word.toLowerCase() : null
+const worstOf = (hits: Parameters<typeof worstHit>[0]) => worstHit(hits)?.word.toLowerCase() ?? null
 
 function meterStatus(list: readonly Msg[]) {
   const scores = list.map(m => m.score)
@@ -204,7 +203,7 @@ export const register: Register = (on, options) => {
     if (!isTyped(e.origin)) return next(e)
     const s = score(e.text)
 
-    const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits), swaps: s.hits.filter(h => h.w >= 2).length }
+    const msg: Msg = { score: s.total, hits: s.hits.length, worst: worstOf(s.hits), swaps: swappable(s.hits).length }
     const list = await update($, msgs, l => [...l, msg].slice(-500))
 
     if (await jarMode($)) {
@@ -222,9 +221,9 @@ export const register: Register = (on, options) => {
 
     if (cfg.mode === 'bluey') {
       const run = streak(list.slice(0, -1).map(m => m.swaps)).now
-      const clean = msg.swaps ? blueyVersion(e.text) : null
-      if (clean && run >= STREAK_TOAST) {
-        $.ui.toast(`Streak over at ${run} clean messages. ${clean.swap[0]!.toUpperCase()}${clean.swap.slice(1)}`)
+      const clean = msg.swaps && run >= STREAK_TOAST ? blueyVersion(e.text) : null
+      if (clean) {
+        $.ui.toast(`Streak over at ${run} clean messages. ${cap(clean.swap)}`)
         await update($, isHidden, () => false) // a broken streak brings a hidden strip back
       }
       await showStatus($)
@@ -243,7 +242,7 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e)) // a counter must never block a prompt
 
   // Stamp each of your messages that scored: a colored pill under the bubble
-  // on the desktop, a text line where only text draws.
+  // on the desktop, a text line where only text draws. Bluey mode redraws it instead.
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     if (!isTyped(e.props.origin)) return next(e)
     // Bluey mode draws the child-friendly version; Claude still got what was typed.
@@ -283,7 +282,7 @@ export const register: Register = (on, options) => {
     )
   })
 
-  // The strip above the prompt: heat bars (meter) or the jar (jar).
+  // The strip above the prompt: heat bars (meter), the jar (jar) or the clean streak (bluey).
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const t = $.ui.resolve(e)

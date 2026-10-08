@@ -34,6 +34,8 @@ const RX = LEX.map(([w, lang, re]) => ({ w, lang, rx: new RegExp(re, 'giu') }))
 
 export type Hit = { i: number; end: number; word: string; w: number; lang: Lang }
 
+export const worstHit = (hits: readonly Hit[]) => [...hits].sort((a, b) => b.w - a.w)[0]
+
 export function score(text: string): { total: number; hits: Hit[] } {
   const all: Hit[] = []
   for (const { w, lang, rx } of RX) {
@@ -67,6 +69,9 @@ export function levelOf(scores: readonly number[]): { level: Level; avg: number 
   return { level, avg }
 }
 
+/** A message scoring this much alone gets a red stamp (and Bluey's biggest swap). */
+export const RED = 6
+
 /** Color for one message's stamp, by how bad that message alone was. */
 export const stampColor = (total: number) =>
-  total >= 6 ? LEVELS[3].color : total >= 3 ? LEVELS[2].color : LEVELS[1].color
+  total >= RED ? LEVELS[3].color : total >= 3 ? LEVELS[2].color : LEVELS[1].color

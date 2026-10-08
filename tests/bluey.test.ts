@@ -30,7 +30,7 @@ test('streak counts clean messages since the last swap', async () => {
   expect(streak([1, 0, 0, 0])).toEqual({ now: 3, best: 3, total: 1 })
 })
 
-test('Bluey mode rewrites the stamp, draws the streak and toasts a broken streak', { options: BLUEY }, async ($, on) => {
+test('Bluey mode redraws the message, draws the streak and toasts a broken streak', { options: BLUEY }, async ($, on) => {
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
   on('prompt.submit', (_$, e) => ({ text: e.text }))
@@ -42,11 +42,16 @@ test('Bluey mode rewrites the stamp, draws the streak and toasts a broken streak
   await say('damn, fine')
   expect(statuses.at(-1)).toBeUndefined() // nothing swapped yet
   await say('wtf')
+  const strip = { plugin: 'wtf-meter', component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never } as const
+  const pre = await $.ui.mount({ ...strip, surface: 'terminal' })
+  await pre.press({ key: 'hide' })
   for (const t of ['a', 'b', 'c', 'd', 'e']) await say(t)
   expect(statuses.at(-1)).toBe('🍪 Clean for 5 · 1 swap')
   expect(toasts).toEqual([])
   await say('kurwa')
   expect(toasts).toEqual(['Streak over at 5 clean messages. O kurka wodna!'])
+  expect(await pre.find({ key: 'hide' })).toBeDefined() // a broken streak brings the strip back
+  await pre.unmount()
   expect(statuses.at(-1)).toBe('🍪 Clean for 0 · 2 swaps')
 
   const props = { text: 'wtf, run it', origin: { kind: 'composer' }, isExpanded: false } as never
@@ -59,10 +64,7 @@ test('Bluey mode rewrites the stamp, draws the streak and toasts a broken streak
   await desk.unmount()
 
   for (const surface of ['terminal', 'desktop'] as const) {
-    const band = await $.ui.mount({
-      plugin: 'wtf-meter', surface, component: 'AbovePrompt',
-      props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100 } as never,
-    })
+    const band = await $.ui.mount({ ...strip, surface })
     expect(await band.find({ type: 'Text', text: /Clean for 0 messages/ })).toBeDefined()
     expect(await band.find({ type: 'Text', text: /best 5 · 2 swaps this session/ })).toBeDefined()
     await band.press({ key: 'hide' })
